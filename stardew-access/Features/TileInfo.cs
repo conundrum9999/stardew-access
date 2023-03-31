@@ -11,6 +11,20 @@ namespace stardew_access.Features
     public class TileInfo
     {
         public static string[] trackable_machines = { "bee house", "cask", "press", "keg", "machine", "maker", "preserves jar", "bone mill", "kiln", "crystalarium", "furnace", "geode crusher", "tapper", "lightning rod", "incubator", "wood chipper", "worm bin", "loom", "statue of endless fortune", "statue of perfection", "crab pot" };
+        private static readonly Dictionary<int, string> ResourceClumpNames = new Dictionary<int, string>
+        {
+            { 600, "Large Stump" },
+            { 602, "Hollow Log" },
+            { 622, "Meteorite" },
+            { 672, "Boulder" },
+            { 752, "Mine Rock" },
+            { 754, "Mine Rock" },
+            { 756, "Mine Rock" },
+            { 758, "Mine Rock" },
+            { 190, "Giant Cauliflower" },
+            { 254, "Giant Melon" },
+            { 276, "Giant Pumpkin" }
+        };
 
         ///<summary>Returns the name of the object at tile alongwith it's category's name</summary>
         public static (string? name, string? categoryName) getNameWithCategoryNameAtTile(Vector2 tile, GameLocation? currentLocation)
@@ -39,7 +53,9 @@ namespace stardew_access.Features
             string? toReturn = null;
             CATEGORY? category = CATEGORY.Others;
 
-            bool isColliding = isCollidingAtTile(x, y, currentLocation);
+            // Commented out; this call takes ~30 ms by itself and is usually not used.
+            // Called directly only in the if conditional where it is used.
+            //bool isColliding = isCollidingAtTile(x, y, currentLocation);
             var terrainFeature = currentLocation.terrainFeatures.FieldDict;
             string? door = getDoorAtTile(x, y, currentLocation);
             string? warp = getWarpPointAtTile(x, y, currentLocation);
@@ -90,7 +106,7 @@ namespace stardew_access.Features
                 toReturn = obj.name;
                 category = obj.category;
             }
-            else if (currentLocation.isWaterTile(x, y) && isColliding && !lessInfo)
+            else if (currentLocation.isWaterTile(x, y) && !lessInfo && isCollidingAtTile(x, y, currentLocation))
             {
                 toReturn = "Water";
                 category = CATEGORY.WaterTiles;
@@ -309,7 +325,7 @@ namespace stardew_access.Features
             {
                 // not a warp point
                 //directly return the value of the logical comparison rather than wasting time in conditional
-                return ((currentLocation.isCollidingPosition(rect, Game1.viewport, true, 0, glider: false, Game1.player, pathfinding: true)) || (currentLocation is Woods && getStumpsInWoods(x, y, currentLocation) is not null));
+                return currentLocation.isCollidingPosition(rect, Game1.viewport, true, 0, glider: false, Game1.player, pathfinding: true) || (currentLocation is Woods woods && getStumpsInWoods(x, y, woods) is not null);
             }
             // was a warp point; return false
             return false;
@@ -328,39 +344,47 @@ namespace stardew_access.Features
             return false;
         }
 
+        /// <summary>
+        /// Gets the farm animal at the specified tile coordinates in the given location.
+        /// </summary>
+        /// <param name="location">The location where the farm animal might be found. Must be either a Farm or an AnimalHouse (coop, barn, etc).</param>
+        /// <param name="x">The x-coordinate of the tile to check.</param>
+        /// <param name="y">The y-coordinate of the tile to check.</param>
+        /// <returns>
+        /// A string containing the farm animal's name, type, and age if a farm animal is found at the specified tile;
+        /// null if no farm animal is found or if the location is not a Farm or an AnimalHouse.
+        /// </returns>
         public static string? getFarmAnimalAt(GameLocation? location, int x, int y)
         {
-            if (location is null || (location is not Farm && location is not AnimalHouse))
+            // Return null if the location is null or not a Farm or AnimalHouse
+            if (location is null || !(location is Farm || location is AnimalHouse))
                 return null;
 
-            //if (location is not Farm && location is not AnimalHouse)
-                //return null;
+            // Use an empty enumerable to store farm animals if no animals are found
+            IEnumerable<FarmAnimal> farmAnimals = Enumerable.Empty<FarmAnimal>();
 
-            List<FarmAnimal>? farmAnimals = null;
+            // If the location is a Farm, get all the farm animals
+            if (location is Farm farm)
+                farmAnimals = farm.getAllFarmAnimals();
+            // If the location is an AnimalHouse, get all the animals from the AnimalHouse
+            else if (location is AnimalHouse animalHouse)
+                farmAnimals = animalHouse.animals.Values;
 
-            if (location is Farm)
-                farmAnimals = ((Farm)location).getAllFarmAnimals();
-            else if (location is AnimalHouse)
-                farmAnimals = ((AnimalHouse)location).animals.Values.ToList();
+            // Use LINQ to find the first farm animal at the specified tile (x, y) coordinates
+            var foundAnimal = farmAnimals.FirstOrDefault(farmAnimal => farmAnimal.getTileX() == x && farmAnimal.getTileY() == y);
 
-            if (farmAnimals == null || farmAnimals.Count <= 0)
-                return null;
-
-            for (int i = 0; i < farmAnimals.Count; i++)
+            // If a farm animal was found at the specified tile coordinates
+            if (foundAnimal != null)
             {
-                int fx = farmAnimals[i].getTileX();
-                int fy = farmAnimals[i].getTileY();
+                string name = foundAnimal.displayName;
+                int age = foundAnimal.age.Value;
+                string type = foundAnimal.displayType;
 
-                if (fx.Equals(x) && fy.Equals(y))
-                {
-                    string name = farmAnimals[i].displayName;
-                    int age = farmAnimals[i].age.Value;
-                    string type = farmAnimals[i].displayType;
-
-                    return $"{name}, {type}, age {age}";
-                }
+                // Return a formatted string with the farm animal's name, type, and age
+                return $"{name}, {type}, age {age}";
             }
 
+            // If no farm animal was found, return null
             return null;
         }
 
@@ -1255,60 +1279,43 @@ namespace stardew_access.Features
 
         public static string? getResourceClumpAtTile(int x, int y, GameLocation currentLocation, bool lessInfo = false)
         {
-            if (currentLocation is Woods)
-                return getStumpsInWoods(x, y, currentLocation, lessInfo);
+            if (currentLocation is Woods woods)
+                return getStumpsInWoods(x, y, woods, lessInfo);
 
             for (int i = 0; i < currentLocation.resourceClumps.Count; i++)
             {
-                if (!currentLocation.resourceClumps[i].occupiesTile(x, y))
+                var resourceClump = currentLocation.resourceClumps[i];
+
+                if (!resourceClump.occupiesTile(x, y))
                     continue;
 
-                if (lessInfo && (currentLocation.resourceClumps[i].tile.X != x || currentLocation.resourceClumps[i].tile.Y != y))
+                if (lessInfo && (resourceClump.tile.X != x || resourceClump.tile.Y != y))
                     continue;
 
-                int index = currentLocation.resourceClumps[i].parentSheetIndex.Value;
+                int index = resourceClump.parentSheetIndex.Value;
 
-                switch (index)
+                if (ResourceClumpNames.TryGetValue(index, out string? resourceName))
                 {
-                    case 600:
-                        return "Large Stump";
-                    case 602:
-                        return "Hollow Log";
-                    case 622:
-                        return "Meteorite";
-                    case 752:
-                    case 754:
-                    case 756:
-                    case 758:
-                        return "Mine Rock";
-                    case 672:
-                        return "Boulder";
-                    case 190:
-                        return "Giant Cauliflower";
-                    case 254:
-                        return "Giant Melon";
-                    case 276:
-                        return "Giant Pumpkin";
-                    default:
-                        return "Unknown";
+                    return resourceName;
+                }
+                else
+                {
+                    return "Unknown";
                 }
             }
 
             return null;
         }
 
-        public static string? getStumpsInWoods(int x, int y, GameLocation currentLocation, bool lessInfo = false)
+        public static string? getStumpsInWoods(int x, int y, Woods currentLocation, bool lessInfo = false)
         {
-            if (currentLocation is not Woods)
-                return null;
-
-            Netcode.NetObjectList<ResourceClump> stumps = ((Woods)currentLocation).stumps;
-            for (int i = 0; i < stumps.Count; i++)
+            Netcode.NetObjectList<ResourceClump> stumps = currentLocation.stumps;
+            foreach (var stump in stumps)
             {
-                if (!stumps[i].occupiesTile(x, y))
+                if (!stump.occupiesTile(x, y))
                     continue;
 
-                if (lessInfo && (stumps[i].tile.X != x || stumps[i].tile.Y != y))
+                if (lessInfo && (stump.tile.X != x || stump.tile.Y != y))
                     continue;
 
                 return "Large Stump";
