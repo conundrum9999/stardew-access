@@ -4,6 +4,7 @@ using Netcode;
 using stardew_access.Translation;
 using StardewValley;
 using StardewValley.Menus;
+using StardewValley.SpecialOrders;
 
 namespace stardew_access.Patches
 {
