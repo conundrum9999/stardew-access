@@ -79,7 +79,7 @@ namespace stardew_access.Patches
             string responseText = "";
             bool hasResponses = false;
 
-            if (__instance.responses.Count > 0) hasResponses = true;
+            if (__instance.responses.Count() > 0) hasResponses = true;
             if (!hasResponses) return false;
 
             questionText = __instance.getCurrentString();

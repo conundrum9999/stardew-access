@@ -225,7 +225,7 @@ namespace stardew_access.Utils
                 }
             }
 
-            if (Game1.CurrentEvent is not null && Game1.CurrentEvent.id == 13 && x == 53 && y == 8)
+            if (Game1.CurrentEvent is not null && Game1.CurrentEvent.id == "13" && x == 53 && y == 8)
             {
                 return ("item-haley_bracelet-name", CATEGORY.DroppedItems);
             }

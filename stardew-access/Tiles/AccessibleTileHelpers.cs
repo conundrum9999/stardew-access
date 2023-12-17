@@ -140,7 +140,7 @@ namespace stardew_access.Tiles
             if (obj.ConditionArgs.TryGetValue("ActiveEvent", out string? args) && !string.IsNullOrEmpty(args))
             {
                 // args should be digits
-                if (int.TryParse(args, out int id))
+                if (int.TryParse(args, out string id))
                 {
                     return Game1.currentLocation.currentEvent != null && Game1.currentLocation.currentEvent.id == id;
                 }
