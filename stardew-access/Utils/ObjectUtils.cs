@@ -4,9 +4,9 @@ namespace stardew_access.Utils
 {
     public static class ObjectUtils
     {
-        public static string GetObjectById(int objectId, int? field = 0)
+        public static string GetObjectById(string objectId, int? field = 0)
         {
-            if (objectId == -1)
+            if (objectId == "-1")
             {
                 return "";
             }
@@ -26,5 +26,11 @@ namespace stardew_access.Utils
                 throw new ArgumentException($"Object ID {objectId} does not exist.");
             }
         }
+
+        public static string     GetObjectById(int objectId, int? field = 0)
+        {
+            return GetObjectById(objectId.ToString(), field);
+        }
+
     }
 }
