@@ -1,6 +1,8 @@
 using static stardew_access.Utils.ObjectUtils;
 using StardewValley;
 using StardewValley.TerrainFeatures;
+using System;
+using System.Collections.Generic;
 using System.Text;
 using stardew_access.Translation;
 
@@ -8,6 +10,9 @@ namespace stardew_access.Utils
 {
     public static class TerrainUtils
     {
+        // Static HashSet for special tree types
+        private static readonly HashSet<string> SeedTreeTypes = new HashSet<string> { "1", "2", "3", "8" };
+
         public static (bool IsWatered, bool IsFertilized, string? CropType, bool IsReadyForHarvest, bool IsDead) GetDirtInfo(HoeDirt dirt)
         {
             return (
@@ -87,15 +92,26 @@ namespace stardew_access.Utils
             return GetFruitTreeInfoString(fruitTreeDetails);
         }
 
-        public static (int TreeType, int GrowthStage, string SeedName, bool IsFertilized) GetTreeInfo(Tree tree)
+        public static (string TreeType, int GrowthStage, string SeedName, bool IsFertilized) GetTreeInfo(Tree tree)
         {
             int treeStage = tree.growthStage.Value;
             string seedName = "";
-            
-            if (tree.treeType.Value <= 3 || tree.treeType.Value == 8)
-                seedName = GetObjectById(308 + (tree.treeType.Value == 8 ? -16 : tree.treeType.Value));
+            string treeType = tree.treeType.Value;
 
-            return (tree.treeType.Value, treeStage, seedName, tree.fertilized.Value);
+            if (SeedTreeTypes.Contains(treeType))
+            {
+                if (int.TryParse(treeType, out int treeTypeNumeric))
+                {
+                    seedName = GetObjectById(308 + (treeType == "8" ? -16 : treeTypeNumeric));
+                }
+                else
+                {
+                    // Handle future non-numeric string types
+                    seedName = GetObjectById(treeType);
+                }
+            }
+
+            return (treeType, treeStage, seedName, tree.fertilized.Value);
         }
 
         public static string GetTreeInfoString((int TreeType, int GrowthStage, string SeedName, bool IsFertilized) treeDetails)
