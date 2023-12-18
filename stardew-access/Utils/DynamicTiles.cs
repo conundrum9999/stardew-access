@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewValley.Buildings;
 using StardewValley.Locations;
+using StardewValley.SpecialOrders;
 using System.Text.Json;
 using stardew_access.Translation;
 using static stardew_access.Utils.JsonLoader;
@@ -306,7 +307,7 @@ namespace stardew_access.Utils
             int buildingTileY = building.tileY.Value;
 
             // If the building is a FishPond, prepend the fish name
-            if (building is FishPond fishPond && fishPond.fishType.Value >= 0)
+            if (building is FishPond fishPond && fishPond.fishType.Value != "0" && fishPond.fishType.Value != "")
             {
                 name = $"{Game1.objectInformation[fishPond.fishType.Value].Split('/')[4]} {name}";
             }
@@ -589,11 +590,11 @@ namespace stardew_access.Utils
             // Use a switch expression to return the appropriate bird name based on the item index value
             return bird.itemIndex.Value switch
             {
-                60 => "npc_name-emerald_gem_bird",
-                62 => "npc_name-aquamarine_gem_bird",
-                64 => "npc_name-ruby_gem_bird",
-                66 => "npc_name-amethyst_gem_bird",
-                68 => "npc_name-topaz_gem_bird",
+                "60" => "npc_name-emerald_gem_bird",
+                "62" => "npc_name-aquamarine_gem_bird",
+                "64" => "npc_name-ruby_gem_bird",
+                "66" => "npc_name-amethyst_gem_bird",
+                "68" => "npc_name-topaz_gem_bird",
                 _ => "npc_name-gem_bird", // Default case for when the item index does not match any of the specified values
             };
         }

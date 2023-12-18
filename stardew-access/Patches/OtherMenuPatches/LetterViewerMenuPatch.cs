@@ -70,7 +70,7 @@ namespace stardew_access.Patches
 
             if (!MainClass.ScreenReader.SayWithMenuChecker(toSpeak, true)) return;
             // snap mouse to accept quest button
-            if (__instance.acceptQuestButton != null && __instance.questID != -1)
+            if (__instance.acceptQuestButton != null && __instance.questID != "-1")
                 __instance.acceptQuestButton.snapMouseCursorToCenter();
         }
 

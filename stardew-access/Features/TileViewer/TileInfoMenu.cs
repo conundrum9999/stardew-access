@@ -71,7 +71,7 @@ public class TileInfoMenu : DialogueBox
                 if (UserTilesUtils.TryAndGetTileDataAt(out AccessibleTile.JsonSerializerFormat? tileData, _tileX, _tileY))
                 {
                     _tempDefaultData = tileData;
-                    responses = new List<Response>
+                    responses = new Response[]
                     {
                         EditExistingResponse, DeleteExistingResponse
                     };

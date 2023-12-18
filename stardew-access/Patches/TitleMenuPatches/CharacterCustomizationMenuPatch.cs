@@ -732,9 +732,9 @@ namespace stardew_access.Patches
 
         private static string GetCurrentHair(bool lessInfo = false) => GetCurrentAttributeValue("hair", () => Game1.player.hair.Value + 1, lessInfo);
 
-        private static string GetCurrentShirt(bool lessInfo = false) => GetCurrentAttributeValue("shirt", () => Game1.player.shirt.Value + 1, lessInfo);
+        private static string GetCurrentShirt(bool lessInfo = false) => GetCurrentAttributeValue("shirt", () => Game1.player.shirt.Value.ToInt() + 1, lessInfo);
 
-        private static string GetCurrentPants(bool lessInfo = false) => GetCurrentAttributeValue("pant", () => Game1.player.pants.Value + 1, lessInfo);
+        private static string GetCurrentPants(bool lessInfo = false) => GetCurrentAttributeValue("pant", () => Game1.player.pants.Value.ToInt() + 1, lessInfo);
 
         private static string GetCurrentAccessory(bool lessInfo = false) => GetCurrentAttributeValue("acc", () => Game1.player.accessory.Value + 2, lessInfo);
 

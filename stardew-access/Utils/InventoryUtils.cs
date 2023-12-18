@@ -310,7 +310,7 @@ internal static class InventoryUtils
         for (int i = 0; i < recipe.recipeList.Count; i++)
         {
             int recipeCount = recipe.recipeList.ElementAt(i).Value;
-            int recipeItem = recipe.recipeList.ElementAt(i).Key;
+            string recipeItem = recipe.recipeList.ElementAt(i).Key;
             string recipeName = recipe.getNameFromIndex(recipeItem);
 
             ingredientList.Add($"{recipeCount} {recipeName}");
