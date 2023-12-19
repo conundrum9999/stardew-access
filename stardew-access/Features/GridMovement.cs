@@ -1,16 +1,17 @@
-using Microsoft.Xna.Framework.Input;
-using StardewModdingAPI;
-
-namespace stardew_access.Features;
-
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
+using Rectangle = Microsoft.Xna.Framework.Rectangle;
+using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
-using System.Timers;
+using StardewValley.Pathfinding;
 using xTile.Dimensions;
-using Rectangle = Microsoft.Xna.Framework.Rectangle;
+
+
+namespace stardew_access.Features;
 using Utils;
 using static Utils.MovementHelpers;
+using System.Timers;
 
 internal class GridMovement : FeatureBase
 {

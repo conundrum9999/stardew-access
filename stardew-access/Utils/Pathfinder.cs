@@ -3,6 +3,7 @@ using System.Timers;
 using Microsoft.Xna.Framework;
 using static stardew_access.Utils.MovementHelpers;
 using StardewValley;
+using StardewValley.Pathfinding;
 using xTile.Dimensions;
 
 namespace stardew_access.Utils

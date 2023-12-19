@@ -1,4 +1,5 @@
 using StardewValley;
+using StardewValley.Pathfinding;
 using StardewValley.Tools;
 using Microsoft.Xna.Framework;
 using stardew_access.Translation;
