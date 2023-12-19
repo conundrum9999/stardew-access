@@ -74,7 +74,7 @@ namespace stardew_access.Utils
             foreach (var tile in tiles)
             {
                 Vector2 tileLocation = tilePosition.Value + tile;
-                PathFindController controller = new(Game1.player, Game1.currentLocation, tileLocation.ToPoint(), -1, eraseOldPathController: true);
+                PathFindController controller = new(Game1.player, Game1.currentLocation, tileLocation.ToPoint(), -1); //***** , eraseOldPathController: true);
 
                 if (controller.pathToEndPoint != null)
                 {
