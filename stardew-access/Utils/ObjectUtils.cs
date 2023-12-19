@@ -11,7 +11,7 @@ namespace stardew_access.Utils
                 return "";
             }
 
-            if (Game1.objectInformation.TryGetValue(objectId, out string? objectInfo))
+            if (Game1.objectData.TryGetValue(objectId, out string? objectInfo))
             {
                 if (field == null)
                 {

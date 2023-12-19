@@ -239,9 +239,9 @@ internal static class InventoryUtils
 
         // These variables are taken from the game's code itself (IClickableMenu.cs -> 1016 line)
         bool edibleItem = (int)((StardewValley.Object)item).Edibility != -300;
-        string[]? buffIconsToDisplay = (edibleItem && Game1.objectInformation[((StardewValley.Object)item).ParentSheetIndex].Split('/').Length > 7)
+        string[]? buffIconsToDisplay = (edibleItem && Game1.objectData[((StardewValley.Object)item).ParentSheetIndex].Split('/').Length > 7)
                 ? item.ModifyItemBuffs(
-                    Game1.objectInformation[((StardewValley.Object)item).ParentSheetIndex].Split('/')[7].Split(' '))
+                    Game1.objectData[(((StardewValley.Object)item).ParentSheetIndex).ToString()].Split('/')[7].Split(' '))
                 : null;
 
         if (buffIconsToDisplay == null)
@@ -271,11 +271,11 @@ internal static class InventoryUtils
         return toReturn;
     }
 
-    internal static string GetExtraItemInfo(int itemIndex, int itemAmount)
+    internal static string GetExtraItemInfo(string itemIndex, int itemAmount)
     {
-        if (itemIndex == -1) return "";
+        if (itemIndex == "-1") return "";
 
-        string itemName = Game1.objectInformation[itemIndex].Split('/')[0];
+        string itemName = Game1.objectData[itemIndex].Split('/')[0];
 
         if (itemAmount != -1)
             return Translator.Instance.Translate("item-required_item_info",

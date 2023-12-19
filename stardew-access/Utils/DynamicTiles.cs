@@ -309,7 +309,7 @@ namespace stardew_access.Utils
             // If the building is a FishPond, prepend the fish name
             if (building is FishPond fishPond && fishPond.fishType.Value != "0" && fishPond.fishType.Value != "")
             {
-                name = $"{Game1.objectInformation[fishPond.fishType.Value].Split('/')[4]} {name}";
+                name = $"{Game1.objectData[fishPond.fishType.Value].Split('/')[4]} {name}";
             }
 
             // Calculate differences in x and y coordinates
@@ -691,7 +691,7 @@ namespace stardew_access.Utils
         {
             if (libraryMuseum.museumPieces.TryGetValue(new Vector2(x, y), out int museumPiece))
             {
-                string displayName = Game1.objectInformation[museumPiece].Split('/')[0];
+                string displayName = Game1.objectData[museumPiece]             .Split('/')[0];
                 return (Translator.Instance.Translate("tile-museum_piece_showcase-suffix", new {content = displayName}), CATEGORY.Interactables);
 
             }
