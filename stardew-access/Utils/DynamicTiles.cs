@@ -210,7 +210,7 @@ namespace stardew_access.Utils
             {
                 return (null, null);
             }
-            if (MainClass.ModHelper.Reflection.GetField<NPC>(beach, "oldMariner").GetValue() is NPC mariner && mariner.getTileLocation() == new Vector2(x, y))
+            if (MainClass.ModHelper.Reflection.GetField<NPC>(beach, "oldMariner").GetValue() is NPC mariner && mariner.Tile == new Vector2(x, y))
             {
                 return ("npc_name-old_mariner", CATEGORY.NPCs);
             }

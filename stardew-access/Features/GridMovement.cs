@@ -202,7 +202,7 @@ internal class GridMovement : FeatureBase
 
 		Log.Debug($"Move Direction: {direction}");
 
-		Vector2 tileLocation = player.getTileLocation();
+		Vector2 tileLocation = player.Tile;
 
 		// Use the directionVectors dictionary to update the tileLocation
 		if (directionVectors.ContainsKey(direction))

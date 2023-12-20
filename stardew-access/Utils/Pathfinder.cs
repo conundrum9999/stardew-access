@@ -51,7 +51,7 @@ namespace stardew_access.Utils
 				Farmer player = Game1.player;
 				if (player.controller != null)
 				{
-					player.currentLocation.playTerrainSound(player.getTileLocation());
+					player.currentLocation.playTerrainSound(player.Tile);
 				}
 			}
 			catch (Exception ex)
