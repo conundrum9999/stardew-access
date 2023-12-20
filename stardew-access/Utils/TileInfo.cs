@@ -228,7 +228,7 @@ namespace stardew_access.Utils
         {
             Bush? bush = (Bush)currentLocation.getLargeTerrainFeatureAt(x, y);
 
-            if (bush is null || (lessInfo && (bush.tilePosition.Value.X != x || bush.tilePosition.Value.Y != y)))
+            if (bush is null || (lessInfo && ((int)bush.Tile.X != x || (int)bush.Tile.Y != y)))
                 return null;
 
             return TerrainUtils.GetBushInfoString(bush);
@@ -502,7 +502,7 @@ namespace stardew_access.Utils
             if (resourceClumpsByCoordinate?.TryGetValue((x, y), out ResourceClump? resourceClump) == true)
             {
                 // Check if lessInfo condition is met
-                if (!lessInfo || (resourceClump.tile.X == x && resourceClump.tile.Y == y))
+                if (!lessInfo || ((int)resourceClump.Tile.X == x && (int)resourceClump.Tile.Y == y))
                 {
                     // Return the name of the resource clump or "Unknown" if not available
                     if (ResourceClumpNameTranslationKeys.TryGetValue(resourceClump.parentSheetIndex.Value, out string? translationKey))

@@ -36,9 +36,9 @@ namespace stardew_access.Utils
 		private static void AddResourceClump(Dictionary<(int x, int y), ResourceClump> dict, ResourceClump resourceClump)
 		{
 			// Loop over all tiles occupied by this resource clump
-			for (int x = (int)resourceClump.tile.X; x < resourceClump.tile.X + resourceClump.width.Value; x++)
+			for (int x = (int)resourceClump.Tile.X; x < (int)resourceClump.Tile.X + resourceClump.width.Value; x++)
 			{
-				for (int y = (int)resourceClump.tile.Y; y < resourceClump.tile.Y + resourceClump.height.Value; y++)
+				for (int y = (int)resourceClump.Tile.Y; y < (int)resourceClump.Tile.Y + resourceClump.height.Value; y++)
 				{
 					// Use TryAdd and log if there's already an entry at this position
 					if (!dict.TryAdd((x, y), resourceClump))

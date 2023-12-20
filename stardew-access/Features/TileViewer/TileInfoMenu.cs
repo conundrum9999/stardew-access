@@ -40,7 +40,7 @@ public class TileInfoMenu : DialogueBox
     private AccessibleTile.JsonSerializerFormat? _tempDefaultData = null;
 
     public TileInfoMenu(int tileX, int tileY)
-        : base("", new List<Response> { MarkTileResponse, AddToUserTilesResponse, SpeakDetailedInfoResponse })
+        : base("", new Response[] { MarkTileResponse, AddToUserTilesResponse, SpeakDetailedInfoResponse })
     {
         _tileX = tileX;
         _tileY = tileY;
@@ -134,7 +134,7 @@ public class TileInfoMenu : DialogueBox
             BuildingOperations.marked[i] = new Vector2(_tileX, _tileY);
             MainClass.ScreenReader.TranslateAndSay("commands-tile_marking-mark-location_marked", true,
                 translationTokens: new
-                    { x_position = Game1.player.getTileX(), y_position = Game1.player.getTileY(), index = i },
+                    { x_position = Game1.player.Tile.X, y_position = Game1.player.Tile.Y, index = i },
                 translationCategory: TranslationCategory.CustomCommands);
             exitThisMenu();
         }
