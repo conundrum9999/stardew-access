@@ -309,7 +309,7 @@ namespace stardew_access.Utils
             // If the building is a FishPond, prepend the fish name
             if (building is FishPond fishPond && fishPond.fishType.Value != "0" && fishPond.fishType.Value != "")
             {
-                name = $"{Game1.objectData[fishPond.fishType.Value].Split('/')[4]} {name}";
+                name = $"{Game1.objectData[fishPond.fishType.Value].DisplayName} {name}";
             }
 
             // Calculate differences in x and y coordinates
@@ -438,11 +438,11 @@ namespace stardew_access.Utils
             {
                 return ("tile_name-traveling_cart_pig", CATEGORY.NPCs);
             }
-            else if (forest.log != null && x == 2 && y == 7)
+            else if (forest.obsolete_log != null && x == 2 && y == 7) // TODO Check for conflicts
             {
                 return ("item_name-log", CATEGORY.Interactables);
             }
-            else if (forest.log == null && x == 0 && y == 7)
+            else if (forest.obsolete_log == null && x == 0 && y == 7) // TODO Check for conflicts
             {
                 return ("entrance_name-secret_woods_entrance", CATEGORY.Doors);
             }
@@ -643,7 +643,7 @@ namespace stardew_access.Utils
         {
             var nutTracker = Game1.player.team.collectedNutTracker;
             string? parrot = GetParrotPerchAtTile(islandLocation, x, y);
-            if (islandLocation.IsBuriedNutLocation(new Point(x, y)) && !nutTracker.ContainsKey($"Buried_{islandLocation.Name}_{x}_{y}"))
+            if (islandLocation.IsBuriedNutLocation(new Point(x, y)) && !nutTracker.Contains($"Buried_{islandLocation.Name}_{x}_{y}"))
             {
                 return ("tile_name-diggable_spot", CATEGORY.Interactables);
             }
@@ -689,14 +689,14 @@ namespace stardew_access.Utils
         /// <returns>A tuple containing the name and CATEGORY of the object found, or (null, null) if no relevant object is found.</returns>
         private static (string? name, CATEGORY? category) GetLibraryMuseumInfo(LibraryMuseum libraryMuseum, int x, int y, bool lessInfo = false)
         {
-            if (libraryMuseum.museumPieces.TryGetValue(new Vector2(x, y), out int museumPiece))
+            if (libraryMuseum.museumPieces.TryGetValue(new Vector2(x, y), out string museumPiece))
             {
-                string displayName = Game1.objectData[museumPiece]             .Split('/')[0];
+                string displayName = Game1.objectData[museumPiece].DisplayName;
                 return (Translator.Instance.Translate("tile-museum_piece_showcase-suffix", new {content = displayName}), CATEGORY.Interactables);
 
             }
 
-            int booksFound = Game1.netWorldState.Value.LostBooksFound.Value;
+            int booksFound = Game1.netWorldState.Value.LostBooksFound;
             string? action = libraryMuseum.doesTileHaveProperty(x, y, "Action", "Buildings");
             if (action != null && action.Contains("Notes"))
             {

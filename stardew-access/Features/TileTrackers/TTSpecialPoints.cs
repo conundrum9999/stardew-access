@@ -41,7 +41,8 @@ internal class TTSpecialPoints : TileTrackerBase
 				string object_category = sPoint.CategoryOverride ?? category;
 
 				if (sPoint.RequiresQuest != null) {
-					if (!player.hasQuest(sPoint.RequiresQuest.Value)) {
+					// TODO This needs to fixed!
+					if (!player.hasQuest($"{sPoint.RequiresQuest.Value}")) {
 						continue;
 					}
 				}
