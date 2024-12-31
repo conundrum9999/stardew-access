@@ -71,14 +71,14 @@ internal class SocialPagePatch : IPatch
         {
             if (datable || housemate)
             {
-                relationship_status = ((!Game1.content.ShouldUseGenderedCharacterTranslations()) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11635") : ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11635").Split('/')[0] : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11635").Split('/').Last()));
+                relationship_status = ((!Game1.content.ShouldUseGenderedCharacterTranslations()) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Single_Female") : ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Single_Female").Split('/')[0] : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Single_Female").Split('/').Last()));
                 if (housemate)
                 {
                     relationship_status = Game1.content.LoadString("Strings\\StringsFromCSFiles:Housemate");
                 }
                 else if (isCurrentSpouse)
                 {
-                    relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11636") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11637"));
+                    relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Husband") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Wife"));
                 }
                 else if (entry.IsMarriedToAnyone())
                 {
@@ -86,31 +86,31 @@ internal class SocialPagePatch : IPatch
                 }
                 else if (!Game1.player.isMarriedOrRoommates() && isDating)
                 {
-                    relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11639") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11640"));
+                    relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Boyfriend") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Girlfriend"));
                 }
                 else if (entry.IsDivorcedFromCurrentPlayer())
                 {
-                    relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11642") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11643"));
+                    relationship_status =((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_ExHusband") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_ExWife"));
                 }
             }
         } else {
             Farmer farmer = (Farmer)entry.Character;
-            relationship_status = ((!Game1.content.ShouldUseGenderedCharacterTranslations()) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11635") : ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11635").Split('/')[0] : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11635").Split('/').Last()));
+            relationship_status = ((!Game1.content.ShouldUseGenderedCharacterTranslations()) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Single_Female") : ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Single_Female").Split('/')[0] : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Single_Female").Split('/').Last()));
             if (isCurrentSpouse)
             {
-                relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11636") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11637"));
+                relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Husband") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Wife"));
             }
             else if (farmer.isMarriedOrRoommates() && !farmer.hasRoommate())
             {
-                relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\UI:SocialPage_MarriedToOtherPlayer_MaleNPC") : Game1.content.LoadString("Strings\\UI:SocialPage_MarriedToOtherPlayer_FemaleNPC"));
+                relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\UI:SocialPage_Relationship_MarriedToOtherPlayer_MaleNpc") : Game1.content.LoadString("Strings\\UI:SocialPage_Relationship_MarriedToOtherPlayer_FemaleNpc"));
             }
             else if (!Game1.player.isMarriedOrRoommates() && entry.IsDatingCurrentPlayer())
             {
-                relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11639") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11640"));
+                relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Boyfriend") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_Girlfriend"));
             }
             else if (entry.IsDivorcedFromCurrentPlayer())
             {
-                relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11642") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage.cs.11643"));
+                relationship_status = ((gender == Gender.Male) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_ExHusband") : Game1.content.LoadString("Strings\\StringsFromCSFiles:SocialPage_Relationship_ExWife"));
             }
         }
         return !String.IsNullOrWhiteSpace(relationship_status) ? relationship_status : null;
