@@ -88,7 +88,7 @@ internal class ObjectTracker : FeatureBase
         }
     }
 
-    public override void Update(object? sender, UpdateTickedEventArgs e)
+    internal override void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     {
         // The event with id 13 is the Haley's six heart event, the one at the beach requiring the player to find the bracelet
         // *** Exiting here will cause GridMovement and ObjectTracker functionality to not work during this event, making the bracelet impossible to track ***
@@ -109,7 +109,7 @@ internal class ObjectTracker : FeatureBase
             Tick();
     }
 
-    public override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+    internal override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
         base.OnButtonPressed(sender, e);
         bool cancelAutoWalkingPressed = MainClass.Config.OTCancelAutoWalking.JustPressed();
@@ -159,7 +159,7 @@ internal class ObjectTracker : FeatureBase
         return false;
     }
 
-    public override void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
+    internal override void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
     {
         base.OnButtonsChanged(sender, e);
         
@@ -168,7 +168,7 @@ internal class ObjectTracker : FeatureBase
         Instance.HandleKeys(sender, e);
     }
 
-    public override void OnPlayerWarped(object? sender, WarpedEventArgs e)
+    internal override void OnWarped(object? sender, WarpedEventArgs e)
     {
         // reset the objects being tracked
         GetLocationObjects(resetFocus: true);

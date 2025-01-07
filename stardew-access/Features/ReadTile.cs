@@ -33,7 +33,7 @@ internal class ReadTile : FeatureBase
         _delay = 100;
     }
 
-    public override void Update(object? sender, UpdateTickedEventArgs e)
+    internal override void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     {
         if (!Context.IsPlayerFree) return;
 
@@ -51,7 +51,7 @@ internal class ReadTile : FeatureBase
         Task.Delay(_delay).ContinueWith(_ => { _isBusy = false; });
     }
 
-    public override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+    internal override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
         // Exit if in a menu
         /*if (!(Game1.activeClickableMenu == null || (Game1.activeClickableMenu is StardewValley.Menus.CarpenterMenu cmenu && cmenu.onFarm)))

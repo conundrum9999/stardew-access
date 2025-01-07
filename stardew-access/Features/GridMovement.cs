@@ -59,7 +59,7 @@ internal class GridMovement : FeatureBase
         timer.Elapsed += Timer_Elapsed;
     }
 
-    public override void Update(object? sender, UpdateTickedEventArgs e)
+    internal override void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     {
         // The event with id 13 is the Haley's six heart event, the one at the beach requiring the player to find the bracelet
         // *** Exiting here will cause GridMovement and ObjectTracker functionality to not work during this event, making the bracelet impossible to track ***
@@ -85,7 +85,7 @@ internal class GridMovement : FeatureBase
         }
     }
 
-    public override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+    internal override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
         // Exit if in a menu
         if (Game1.activeClickableMenu != null)
@@ -148,7 +148,7 @@ internal class GridMovement : FeatureBase
         return false;
     }
 
-    public override void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
+    internal override void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
     {
         if (!Context.IsPlayerFree)
             return;
@@ -163,7 +163,7 @@ internal class GridMovement : FeatureBase
         base.OnButtonsChanged(sender, e);
     }
 
-    public override void OnPlayerWarped(object? sender, WarpedEventArgs e)
+    internal override void OnWarped(object? sender, WarpedEventArgs e)
     {
         HandleFinishedWarping();
         StepCounter = 0;

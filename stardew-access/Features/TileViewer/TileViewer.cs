@@ -109,7 +109,7 @@ internal class TileViewer : FeatureBase
     /// <summary>
     /// Handle keyboard input related to the tile viewer.
     /// </summary>
-    public override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+    internal override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
         // Exit if in a menu
         if (!IsInMenuBuilderViewport() && Game1.activeClickableMenu != null)
@@ -363,7 +363,7 @@ internal class TileViewer : FeatureBase
     /// <summary>
     /// Handle tile viewer logic.
     /// </summary>
-    public override void Update(object? sender, UpdateTickedEventArgs e)
+    internal override void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     {
         if ((Game1.activeClickableMenu == null && Context.IsPlayerFree) || IsInMenuBuilderViewport())
         {

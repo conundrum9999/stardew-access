@@ -36,10 +36,10 @@ public class PlayerTriggered : FeatureBase
         repeatTextTimerCount = 0;
     }
 
-    public override void Update(object? sender, UpdateTickedEventArgs e)
+    internal override void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     { }
 
-    public override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+    internal override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
         if (MainClass.Config.RepeatLastTextKey.JustPressed())
         {

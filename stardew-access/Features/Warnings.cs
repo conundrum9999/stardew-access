@@ -32,7 +32,7 @@ public class Warnings : FeatureBase
         _prevHour = 6;
     }
 
-    public override void Update(object? sender, UpdateTickedEventArgs e)
+    internal override void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     {
         if (!Context.IsPlayerFree) return;
 

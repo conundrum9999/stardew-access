@@ -20,24 +20,24 @@ public class FeatureManager
         Radar.Instance,
     ];
 
-    public static void UpdateEvent(object? sender, UpdateTickedEventArgs e)
+    internal static void  OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     {
         foreach (FeatureBase feature in AllFeatures)
         {
             try
             {
-                feature.Update(sender, e);
+                feature.OnUpdateTicked(sender, e);
             }
             catch (Exception exception)
             {
                 Log.Error(
-                    $"An error occurred while updating {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                    $"An error occurred in OnUpdateTicked of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
                 throw;
             }
         }
     }
 
-    public static void OnButtonPressedEvent(object? sender, ButtonPressedEventArgs e)
+    internal static void OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
         #region Simulate left and right clicks
 
@@ -76,7 +76,7 @@ public class FeatureManager
         }
     }
 
-    public static void OnButtonsChangedEvent(object? sender, ButtonsChangedEventArgs e)
+    internal static void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
     {
         foreach (FeatureBase feature in AllFeatures)
         {
@@ -87,24 +87,143 @@ public class FeatureManager
             catch (Exception exception)
             {
                 Log.Error(
-                    $"An error occurred in OnButtonChangedEvent of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                    $"An error occurred in OnButtonsChanged of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
                 throw;
             }
         }
     }
 
-    public static void OnPlayerWarpedEvent(object? sender, WarpedEventArgs e)
+    internal static void OnWarped(object? sender, WarpedEventArgs e)
     {
         foreach (FeatureBase feature in AllFeatures)
         {
             try
             {
-                feature.OnPlayerWarped(sender, e);
+                feature.OnWarped(sender, e);
             }
             catch (Exception exception)
             {
                 Log.Error(
-                    $"An error occurred in OnButtonChangedEvent of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                    $"An error occurred in OnWarped of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                throw;
+            }
+        }
+    }
+
+    internal static void OnBuildingListChanged(object? sender, BuildingListChangedEventArgs e)
+    {
+        foreach (FeatureBase feature in AllFeatures)
+        {
+            try
+            {
+                feature.OnBuildingListChanged(sender, e);
+            }
+            catch (Exception exception)
+            {
+                Log.Error(
+                    $"An error occurred in OnBuildingListChanged of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                throw;
+            }
+        }
+    }
+
+    internal static void OnDebrisListChanged(object? sender, DebrisListChangedEventArgs e)
+    {
+        foreach (FeatureBase feature in AllFeatures)
+        {
+            try
+            {
+                feature.OnDebrisListChanged(sender, e);
+            }
+            catch (Exception exception)
+            {
+                Log.Error(
+                    $"An error occurred in OnDebrisListChanged of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                throw;
+            }
+        }
+    }
+
+    internal static void OnFurnitureListChanged(object? sender, FurnitureListChangedEventArgs e)
+    {
+        foreach (FeatureBase feature in AllFeatures)
+        {
+            try
+            {
+                feature.OnFurnitureListChanged(sender, e);
+            }
+            catch (Exception exception)
+            {
+                Log.Error(
+                    $"An error occurred in OnFurnitureListChanged of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                throw;
+            }
+        }
+    }
+
+    internal static void OnLargeTerrainFeatureListChanged(object? sender, LargeTerrainFeatureListChangedEventArgs e)
+    {
+        foreach (FeatureBase feature in AllFeatures)
+        {
+            try
+            {
+                feature.OnLargeTerrainFeatureListChanged(sender, e);
+            }
+            catch (Exception exception)
+            {
+                Log.Error(
+                    $"An error occurred in OnLargeTerrainFeatureListChanged of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                throw;
+            }
+        }
+    }
+
+    internal static void OnNpcListChanged(object? sender, NpcListChangedEventArgs e)
+    {
+        foreach (FeatureBase feature in AllFeatures)
+        {
+            try
+            {
+                feature.OnNpcListChanged(sender, e);
+            }
+            catch (Exception exception)
+            {
+                Log.Error(
+                    $"An error occurred in OnNpcListChanged of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                throw;
+            }
+        }
+    }
+
+    internal static void OnObjectListChanged(object? sender, ObjectListChangedEventArgs e)
+    {
+        foreach (FeatureBase feature in AllFeatures)
+        {
+            try
+            {
+                feature.OnObjectListChanged(sender, e);
+            }
+            catch (Exception exception)
+            {
+                Log.Error(
+                    $"An error occurred in On of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
+                throw;
+            }
+        }
+    }
+
+    internal static void OnTerrainFeatureListChanged(object? sender, TerrainFeatureListChangedEventArgs e)
+    {
+        foreach (FeatureBase feature in AllFeatures)
+        {
+            try
+            {
+                feature.OnTerrainFeatureListChanged(sender, e);
+            }
+            catch (Exception exception)
+            {
+                Log.Error(
+                    $"An error occurred in OnTerrainFeatureListChanged of {feature.GetType().FullName} feature:\n{exception.Message}\n{exception.StackTrace}");
                 throw;
             }
         }

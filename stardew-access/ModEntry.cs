@@ -93,16 +93,25 @@ public class MainClass : Mod
         }
         #endregion
 
-        helper.Events.Input.ButtonPressed += FeatureManager.OnButtonPressedEvent;
-        helper.Events.Input.ButtonsChanged += FeatureManager.OnButtonsChangedEvent;
-        helper.Events.Player.Warped += OnPlayerWarped;
+        // Smapi Event bindings
         helper.Events.Content.LocaleChanged += OnLocaleChanged;
+        helper.Events.Display.MenuChanged += OnMenuChanged;
         helper.Events.Display.Rendering += OnRenderingStart;
+        helper.Events.GameLoop.DayStarted += OnDayStarted;
         helper.Events.GameLoop.GameLaunched += OnGameLaunched;
         helper.Events.GameLoop.OneSecondUpdateTicked += OnOneSecondUpdateTicked;
         helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
-        helper.Events.GameLoop.DayStarted += OnDayStarted;
-        helper.Events.Display.MenuChanged += OnMenuChanged;
+        helper.Events.Input.ButtonPressed += FeatureManager.OnButtonPressed;
+        helper.Events.Input.ButtonsChanged += FeatureManager.OnButtonsChanged;
+        helper.Events.Player.Warped += OnWarped;
+        helper.Events.World.BuildingListChanged += FeatureManager.OnBuildingListChanged;
+        helper.Events.World.DebrisListChanged += FeatureManager.OnDebrisListChanged;
+        helper.Events.World.FurnitureListChanged += FeatureManager.OnFurnitureListChanged;
+        helper.Events.World.LargeTerrainFeatureListChanged += FeatureManager.OnLargeTerrainFeatureListChanged;
+        helper.Events.World.NpcListChanged += FeatureManager.OnNpcListChanged;
+        helper.Events.World.ObjectListChanged += FeatureManager.OnObjectListChanged;
+        helper.Events.World.TerrainFeatureListChanged += FeatureManager.OnTerrainFeatureListChanged;
+        // App events
         AppDomain.CurrentDomain.DomainUnload += OnExit;
         AppDomain.CurrentDomain.ProcessExit += OnExit;
     }
@@ -155,7 +164,7 @@ public class MainClass : Mod
 
         TileManager.EnsureLocationLoaded(Game1.currentLocation);
         
-        FeatureManager.UpdateEvent(sender, e);
+        FeatureManager.OnUpdateTicked(sender, e);
 
         RefreshBuildListIfRequired();
 
@@ -204,12 +213,12 @@ public class MainClass : Mod
         }
     }
 
-    private void OnPlayerWarped(object? sender, WarpedEventArgs e)
+    private void OnWarped(object? sender, WarpedEventArgs e)
     {
         // exit if warp event is for other players
         if (!e.IsLocalPlayer) return;
         TileUtils.CleanupMaps(e.OldLocation, e.NewLocation);
-        FeatureManager.OnPlayerWarpedEvent(sender, e);
+        FeatureManager.OnWarped(sender, e);
     }
 
     internal static string GetCurrentSaveFileName()

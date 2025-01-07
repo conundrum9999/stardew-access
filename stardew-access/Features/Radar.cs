@@ -82,7 +82,7 @@ internal class Radar : FeatureBase
          */
     }
 
-    public override void Update(object? sender, UpdateTickedEventArgs e)
+    internal override void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     {
         if (!Context.IsPlayerFree) return;
 

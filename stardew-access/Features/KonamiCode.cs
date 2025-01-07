@@ -19,10 +19,10 @@ internal class KonamiCode : FeatureBase
         }
     }
 
-    public override void Update(object? sender, UpdateTickedEventArgs e)
+    internal override void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
     { }
 
-    public override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+    internal override bool OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
         bool cheater = CheckKeyPress(e.Button);
         if (cheater)
