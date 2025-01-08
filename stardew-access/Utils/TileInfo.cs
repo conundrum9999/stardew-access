@@ -629,13 +629,10 @@ public class TileInfo
     internal static string GetChestColorAndName(Chest chest)
     {
         int colorIndex = GetSelectionFromColor(chest.playerChoiceColor.Get());
-        Log.Trace($"colorIndex is {colorIndex}");
         string chestColor = (!chest.playerChest.Value || colorIndex <= 0)
             ? ""
             : Translator.Instance.Translate("menu-item_grab-chest_colors",
                 new { index = colorIndex, is_selected = 0 }, TranslationCategory.Menu);
-        Log.Trace($"chestColor is {chestColor}");
-        Log.Trace($"chest.displayName is {chest.DisplayName}");
         string displayName = chest.giftbox.Value
         ? (chest.giftboxIsStarterGift.Value ? "Starter Gift" : "Giftbox")
         : (chest.fridge.Value
