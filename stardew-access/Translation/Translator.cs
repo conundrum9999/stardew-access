@@ -1,6 +1,5 @@
 using Shockah.ProjectFluent;
 using StardewModdingAPI;
-using System.Text.RegularExpressions;
 
 namespace stardew_access.Translation
 {
@@ -90,19 +89,21 @@ namespace stardew_access.Translation
                 return translationKey;
             }
 
-            var match = Regex.Match(translationKey, @"(.*?)\[(.*?)\]$");
+            // Find the last occurrence of '[' and ']' in the string
+            int lastBracketOpen = translationKey.LastIndexOf('[');
+            int lastBracketClose = translationKey.LastIndexOf(']');
+
             string key = translationKey;
             string? extra = null;
-            if (match.Success)
+
+            // Ensure that '[' exists, ']' is at the end, and '[' comes before ']'
+            if (lastBracketOpen != -1 && lastBracketClose == translationKey.Length - 1 && lastBracketOpen < lastBracketClose)
             {
-                key = match.Groups[1].Value;
-                extra = match.Groups[2].Value;
+                key = translationKey.Substring(0, lastBracketOpen);
+                extra = translationKey.Substring(lastBracketOpen + 1, lastBracketClose - lastBracketOpen - 1);
             }
             if (requiredEntries.ContainsKey(key))
             {
-                #if DEBUG
-                Log.Verbose($"Translate: found translation key \"{key}\"", true);
-                #endif
                 return $"{requiredEntries.Get(key)}{(extra != null ? $" {extra}" : "")}";
             }
 
@@ -126,17 +127,22 @@ namespace stardew_access.Translation
                 return translationKey;
             }
 
-            var match = Regex.Match(translationKey, @"(.*?)\[(.*?)\]$");
+            // Find the last occurrence of '[' and ']' in the string
+            int lastBracketOpen = translationKey.LastIndexOf('[');
+            int lastBracketClose = translationKey.LastIndexOf(']');
+
             string key = translationKey;
             string? extra = null;
-            if (match.Success)
+
+            // Ensure that '[' exists, ']' is at the end, and '[' comes before ']'
+            if (lastBracketOpen != -1 && lastBracketClose == translationKey.Length - 1 && lastBracketOpen < lastBracketClose)
             {
-                key = match.Groups[1].Value;
-                extra = match.Groups[2].Value;
+                key = translationKey.Substring(0, lastBracketOpen);
+                extra = translationKey.Substring(lastBracketOpen + 1, lastBracketClose - lastBracketOpen - 1);
             }
             if (requiredEntries.ContainsKey(key))
             {
-                #if DEBUG
+                /*#if DEBUG
                 if (tokens is Dictionary<string, object> dictTokens)
                 {
                     Log.Verbose(
@@ -153,12 +159,9 @@ namespace stardew_access.Translation
                         $"Translate with tokens: found translation key \"{key}\" with tokens: {tokenStr}",
                         true);
                 }
-                #endif
+                #endif*/
                 var result = tokens is null ? requiredEntries.Get(key) : requiredEntries.Get(key, tokens);
-                #if DEBUG
-                Log.Verbose($"Translated to: {result}", true);
-                #endif
-                return $"{result}{(extra != null ? $" {extra}" : "")}";
+                return result + (extra != null ? " " + extra : "");
             }
 
             if (!disableWarning)
