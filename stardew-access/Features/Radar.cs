@@ -1,4 +1,5 @@
 using StardewModdingAPI.Events;
+using System.Diagnostics;
 
 namespace stardew_access.Features;
 
@@ -168,16 +169,24 @@ internal class Radar : FeatureBase
         return detectedTiles;
     }
 
+    private static int refreshCounter = 0;
+    private static double _average = 0;
+    public static void AddToAverage(double value)
+    {
+        refreshCounter++;
+        _average += (value - _average) / refreshCounter;
+    }
+ 
     /// <summary>
     /// Search the entire location using Breadth First Search algorithm(BFS).
     /// </summary>
     /// <returns>A dictionary with all the detected tiles along with the name of the object on it and it's category.</returns>
-    public static Dictionary<Vector2, (string, string)> SearchLocation()
+    public static SortedDictionary<string, List<(Vector2 vector, string name)>> SearchLocation(bool sortAlphabetically = false)
     {
-        //var watch = new Stopwatch();
+        var watch = new Stopwatch();
         //watch.Start();
         var currentLocation = Game1.currentLocation;
-        Dictionary<Vector2, (string, string)> detectedTiles = [];
+        Dictionary<string, List<(Vector2, string)>> detectedTiles = [];
         Vector2 position = Vector2.Zero;
         (bool, string? name, string category) tileInfo;
 
@@ -185,7 +194,7 @@ internal class Radar : FeatureBase
         HashSet<Vector2> searched = [];
         int[] dirX = [-1, 0, 1, 0];
         int[] dirY = [0, 1, 0, -1];
-        int count = 0;
+        //int count = 0;
 
         toSearch.Enqueue(Game1.player.Tile);
         searched.Add(Game1.player.Tile);
@@ -195,27 +204,44 @@ internal class Radar : FeatureBase
         //Log.Debug($"Search init duration: {elapsedMs}");
         //watch.Reset();
         //watch.Start();
+        Vector2 dir = new();
         while (toSearch.Count > 0)
         {
             Vector2 item = toSearch.Dequeue();
+            //watch.Start();
             tileInfo = CheckTile(item, currentLocation, true);
+            //watch.Stop(); // Stop timing
+            //AddToAverage(watch.ElapsedMilliseconds);
+            //Log.Trace($"CheckTile executed in {watch.ElapsedMilliseconds} ms; average is {_average}.", true);
             if (tileInfo.Item1 && tileInfo.name != null)
             {
-                // Add detected tile to the dictionary
-                detectedTiles.Add(item, (tileInfo.name, tileInfo.category));
+                // Add to the detectedTiles dictionary, grouped by category
+                if (!detectedTiles.TryGetValue(tileInfo.category, out var list))
+                {
+                    list = [];
+                    detectedTiles[tileInfo.category] = list;
+                }
+                list.Add((item, tileInfo.name)); // Add in proximity order (discovered order)
             }
 
-            count++;
+            //count++;
 
+            // Reset dir
+            dir.X = 0;
+            dir.Y = 0;
             for (int i = 0; i < 4; i++)
             {
-                Vector2 dir = new(item.X + dirX[i], item.Y + dirY[i]);
+                dir.X = item.X + dirX[i];
+                dir.Y = item.Y + dirY[i];
 
-                if (!searched.Contains(dir) && (DoorUtils.IsWarpAtTile(((int)dir.X, (int)dir.Y), currentLocation) ||
-                                                currentLocation.isTileOnMap(dir)))
+                if (!searched.Add(dir)) 
+                {
+                    continue; // Skip if already in the HashSet
+                }
+                if (DoorUtils.IsWarpAtTile(((int)dir.X, (int)dir.Y), currentLocation) ||
+                                                currentLocation.isTileOnMap(dir))
                 {
                     toSearch.Enqueue(dir);
-                    searched.Add(dir);
                 }
             }
         }
@@ -223,8 +249,16 @@ internal class Radar : FeatureBase
         //watch.Stop();
         //elapsedMs = watch.ElapsedMilliseconds;
         //Log.Debug($"Search loop duration: {elapsedMs}; {count} iterations.");
-        searched.Clear();
-        return detectedTiles;
+        // If sortAlphabetically is true, sort each category alphabetically
+        if (sortAlphabetically)
+        {
+            foreach (var list in detectedTiles.Values)
+            {
+                list.Sort((a, b) => StringComparer.Ordinal.Compare(a.Item2, b.Item2));
+            }
+        }
+
+        return new SortedDictionary<string, List<(Vector2, string)>>(detectedTiles);
     }
 
     /// <summary>

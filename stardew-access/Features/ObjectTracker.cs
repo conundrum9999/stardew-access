@@ -5,11 +5,11 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Locations;
+using System.Diagnostics;
 
 namespace stardew_access.Features;
 using System.Timers;
 
-using Tracker;
 using Utils;
 using Translation;
 using static Utils.MiscUtils;
@@ -19,12 +19,287 @@ using static Utils.NPCUtils;
 
 internal class ObjectTracker : FeatureBase
 {
-    private  bool SortByProximity;
-    private  TrackedObjects? trackedObjects;
+    // The current  Pathfinder instance
     private  Pathfinder? pathfinder;
-    internal string? SelectedCategory;
-    internal string? SelectedObject;
-    internal Vector2? SelectedCoordinates;
+
+    // Determines whether we sort by proximity or not
+    private  bool SortByProximity;
+
+    // Store of tracked things
+    // will be replaced upon refresh.
+    private  SortedDictionary<string, List<(Vector2 position, string name)>> TrackedObjects = [];
+
+    // Backing field for the currently selected category in the UI.
+    private string _selectedCategory = "";
+
+    // Backing field for the currently selected category's index in the list.
+    private int _selectedCategoryIndex = -1;
+
+    // Represents the currently selected category in the UI.
+    internal string? SelectedCategory
+    {
+        // If _selectedCategory isn't empty and is a key in TrackedObjects, we consider it valid;
+        // otherwise, we return null.
+        get => !string.IsNullOrEmpty(_selectedCategory) && TrackedObjects.ContainsKey(_selectedCategory)
+            ? _selectedCategory
+            : null;
+        set
+        {
+            // 1. If the incoming value is null or empty, we clear everything out.
+            if (string.IsNullOrEmpty(value))
+            {
+                // Reset everything
+                _selectedCategory = "";
+                _selectedCategoryIndex = -1;
+                _selectedObject = (Vector2.Zero, "");
+                _selectedObjectIndex = -1;
+                return;
+            }
+
+            // 2. If the value isn't actually changing, do nothing.
+            if (_selectedCategory == value)
+                return;
+
+            try
+            {
+                // 3. If the new category isn't in TrackedObjects, it’s invalid
+                //    => Throw an error -- this shouldn't happen under normal circumstances.
+                if (!TrackedObjects.ContainsKey(value))
+                {
+                    // Because we haven't assigned anything yet,
+                    // our underlying values remain unchanged.
+                    throw new InvalidOperationException(
+                        $"Attempted to set invalid category '{value}'. This should not occur if GetLocationObjects was handled properly."
+                    );
+                }
+
+                // 4. The category is valid; we can safely set it.
+                _selectedCategory = value;
+
+                // Build a temporary array of category keys from the sorted dictionary
+                // to figure out the new index of this category.
+                // (We assume you're using SortedDictionary, so keys are in alphabetical order).
+                var keys = TrackedObjects.Keys.ToArray();
+                _selectedCategoryIndex = Array.IndexOf(keys, value);
+
+                // Since GetLocationObjects only populates categories that
+                // always have at least one object, we select index 0 without
+                // checking for an empty list.
+                var catList = TrackedObjects[_selectedCategory];
+                _selectedObjectIndex = 0;
+                _selectedObject = catList[0];
+            }
+            catch (Exception ex)
+            {
+                #if DEBUG
+                Log.Warn($"Error setting SelectedCategory: {ex}", true);
+                #else
+                Log.Trace($"Error setting SelectedCategory: {ex}", true);
+                #endif
+            }
+        }
+    }
+
+    internal int SelectedCategoryIndex
+    {
+        get
+        {
+            // Rebuild the key list to ensure it’s current
+            var keys = TrackedObjects.Keys.ToArray();
+            // If the stored string is valid, we find its index
+            if (SelectedCategory == null)
+                return -1;
+            _selectedCategoryIndex = Array.IndexOf(keys, _selectedCategory);
+            return _selectedCategoryIndex;
+        }
+        set
+        {
+            var keys = TrackedObjects.Keys.ToArray();
+            if (value < 0 || value >= keys.Length)
+            {
+                // Announce boundary or do nothing
+                AnnounceBoundary(value < _selectedCategoryIndex);
+                return;
+            }
+
+            // This sets the "source of truth" string property, 
+            // which also updates the backing index inside that setter.
+            SelectedCategory = keys[value];
+        }
+    }
+
+    // The current backing field for the selected object (tuple).
+    private (Vector2 position, string name) _selectedObject = (Vector2.Zero, "");
+
+    // Represents the currently selected object in the UI.
+    // This property defers heavily to SelectedObjectIndex as the canonical place
+    // for which object in the list is selected. If SelectedObjectIndex is -1, there's no valid object.
+    internal (Vector2 position, string name)? SelectedObject
+    {
+        get
+        {
+            // Let the index logic do the heavy lifting. If index is -1, we have no valid object.
+            int idx = SelectedObjectIndex;
+            if (idx == -1)
+                return null;
+
+            // Otherwise, we assume _selectedObject is already in sync with that index.
+            // (Because SelectedObjectIndex's getter/setter keep them aligned.)
+            return _selectedObject;
+        }
+        set
+        {
+            // If someone explicitly sets this to null, that means "no selection".
+            if (value == null)
+            {
+                _selectedObject = (Vector2.Zero, "");
+                // Also reset the index to -1:
+                _selectedObjectIndex = -1;
+                return;
+            }
+
+            try
+            {
+                // Check if the current category is valid:
+                var catObjects = TrackedObjects[_selectedCategory];
+
+                // Attempt to find this object in the category’s list.
+                int foundIndex = catObjects.IndexOf(value.Value);
+
+                if (foundIndex == -1)
+                {
+                    // The object is not in the list, but the category is still valid.
+                    // => set focus to first item.
+                    SelectedObjectIndex = 0;
+                }
+                else
+                {
+                    // The object is found at a valid index. Update both the index and the object.
+                    _selectedObjectIndex = foundIndex;
+                    _selectedObject = value.Value;
+                }
+            }
+            catch (KeyNotFoundException ex)
+            {
+                // The category is invalid => return null
+                #if DEBUG
+                Log.Error($"Unable to set SelectedObject to \"{value}\" due to {ex}", true);
+                #endif
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Any other unexpected error => log and return.
+                #if DEBUG
+                Log.Error($"Unable to set SelectedObject to \"{value}\" due to {ex}", true);
+                #endif
+                return;
+            }
+        }
+    }
+
+    // Private backing field for the "currently selected object" index
+    private int _selectedObjectIndex = 0;
+
+    // This property reports (and sets) which index in the current category's list is selected.
+    // It uses a "try/fallback" approach:
+    // - The getter first tries to see if our stored index still matches our stored _selectedObject.
+    // - If that check fails, we fallback to .IndexOf(_selectedObject).
+    // - If that still fails (or if the category is invalid), we catch an exception and return -1
+    //   (or do whatever "invalid" logic you need).
+    // - The setter trusts the incoming value, and if it’s out-of-range or invalid, we handle it in catch blocks
+    //   so we can give the user explicit UI feedback about boundaries or invalid categories.
+    internal int SelectedObjectIndex
+    {
+        get
+        {
+            try
+            {
+                // Fast-path check:
+                // 1. If the object at [category][index] is the same as _selectedObject, we return immediately.
+                // 2. Otherwise, we do a fallback .IndexOf(_selectedObject).
+                if (TrackedObjects[_selectedCategory][_selectedObjectIndex] == _selectedObject)
+                {
+                    // Normal case: everything is still valid
+                    return _selectedObjectIndex;
+                }
+                else
+                {
+                    // Fallback: the object may have shifted in the list
+                    int newIndex = TrackedObjects[_selectedCategory].IndexOf(_selectedObject);
+                    _selectedObjectIndex = newIndex; 
+                    return newIndex;
+                }
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // The object index is out of range, but the category might still be valid.
+                // => Set index to last item.
+                _selectedObjectIndex = TrackedObjects[_selectedCategory].Count - 1;
+                return _selectedObjectIndex;
+            }
+            catch (KeyNotFoundException ex)
+            {
+                // The category key (_selectedCategory) is no longer valid in TrackedObjects => full refresh
+                Log.Error($"Unable to retrieve SelectedObjectIndex due to {ex}");
+                // Return -1 to indicate no object.
+                return -1;
+            }
+            catch (Exception ex)
+            {
+                // Fallback for unexpected exceptions.
+                Log.Error($"Unable to retrieve SelectedObjectIndex due to {ex}", true);
+                return -1;
+            }
+        }
+        set
+        {
+            // We "trust" the incoming value to be valid.
+            // We'll catch errors and do boundary announcements or resets as needed.
+            try
+            {
+                // Attempt to retrieve the object at `value` to verify it's valid and in range.
+                var testObj = TrackedObjects[_selectedCategory][value]; 
+                // If that succeeds, we can safely update both the index and the selected object.
+                _selectedObjectIndex = value;
+                _selectedObject = testObj; 
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // The user tried to go beyond the first or last item in the current list.
+                // The old index/object remain in place; we just announce the boundary.
+                AnnounceBoundary(value < _selectedObjectIndex);
+            }
+            catch (KeyNotFoundException)
+            {
+                // The category key is no longer valid => return
+                return;
+            }
+        }
+    }
+
+    // For boundary announcements:
+    private static void AnnounceBoundary(bool isStart)
+    {
+        MainClass.ScreenReader.TranslateAndSay(
+            isStart 
+                ? "feature-object_tracker-start_of_list" 
+                : "feature-object_tracker-end_of_list",
+            true
+        );
+    }
+
+    // Provides direct access to the position (Vector2?) of the currently selected object in the UI.
+    // Returns null if no valid object is selected.
+    //internal Vector2? SelectedObjectPosition => _selectedObject.position != Vector2.Zero ? _selectedObject.position : null;
+
+    // Provides direct access to the name (string?) of the currently selected object in the UI.
+    // Returns null if no valid object is selected.
+    //internal string? SelectedObjectName => _selectedObject.name != "" ? _selectedObject.name : null;
+
+    private Vector2? SelectedCoordinates = null;
+    
+    
     private Dictionary<string, Dictionary<string, Dictionary<int, (string? name, string? category)>>>
     favorites = new(StringComparer.OrdinalIgnoreCase);
     private const int PressInterval = 500; // Milliseconds
@@ -245,16 +520,17 @@ internal class ObjectTracker : FeatureBase
 
     private bool RetryPathfinding(int attemptNumber, int maxRetries, Vector2? lastTargetedTile)
     {
-        if (IsFocusValid() && attemptNumber < maxRetries)
+        if ((SelectedCoordinates.HasValue || SelectedObject.HasValue) && attemptNumber < maxRetries)
         {
-            if (trackedObjects != null && trackedObjects.GetObjects().TryGetValue("characters", out var characters))
+            /* this was broken anyway; will investigate better way to handle. Leaving as reminder.
+             * if (TrackedObjects.TryGetValue("characters", out var characters))
             {
                 foreach (var kvp in characters)
                 {
                     NPC? character = kvp.Value.character;
                     GhostNPC(character, sameTile: true);
                 }
-            }
+            }*/
             return true;
         }
         GetLocationObjects(resetFocus: true);
@@ -270,188 +546,186 @@ internal class ObjectTracker : FeatureBase
         pathfinder?.Dispose();
     }
 
-    private bool IsFocusValid()
-    {
-        if (SelectedCategory != null && SelectedObject != null)
-            return trackedObjects?.GetObjects().ContainsKey(SelectedCategory) == true && trackedObjects.GetObjects()[SelectedCategory].ContainsKey(SelectedObject);
-        return false;
-    }
-
-    private bool IsValidSelection()
-    {
-        return trackedObjects != null && SelectedCategory != null && SelectedObject != null;
-    }
-
-    private SpecialObject? GetCurrentlySelectedObject()
-    {
-        return SelectedCategory != null && SelectedObject != null && trackedObjects?.GetObjects()?.TryGetValue(SelectedCategory, out var categoryObjects) == true
-            ? categoryObjects.TryGetValue(SelectedObject, out var selectedObject) ? selectedObject : null
-            : null;
-    }
-
+    /// <summary>
+    /// Reads information about the currently selected tile or object aloud to the player,
+    /// using either an explicit override coordinate (SelectedCoordinates) or the currently
+    /// selected object's position. 
+    /// </summary>
+    /// <param name="readTileOnly">
+    /// When true, indicates that only the tile coordinates should be read aloud, rather than full details.
+    /// </param>
+    /// <remarks>
+    /// 1. If <see cref="SelectedCoordinates"/> is set, that takes priority over <see cref="SelectedObject"/>. 
+    /// 2. If neither is set, no speech output occurs. 
+    /// 3. The screen reader uses different translation tokens depending on whether an override is present.
+    /// </remarks>
     private void ReadCurrentlySelectedObject(bool readTileOnly = false)
     {
-        if (!IsValidSelection())
-            return;
+        // Attempt to retrieve the currently selected object (if any).
+        (Vector2 position, string name)? selectedObject = SelectedObject;
 
+        // Determine the "destination" tile, either a user override or the selected object's position.
+        // If both are unset, do nothing.
+        Vector2 destinationTile;
+        string destinationName = "";
+        string translationKey;
+        object translationTokens;
+        int only_tile = readTileOnly ? 1 : 0;
         Farmer player = Game1.player;
-        SpecialObject? sObject = GetCurrentlySelectedObject();
-
-        if (sObject != null)
+        Vector2 playerTile = player.Tile;
+        string direction;
+        string distance;
+        if (SelectedCoordinates.HasValue)
         {
-            Vector2 playerTile = player.Tile;
-            Vector2? sObjectTile = sObject?.TileLocation;
-            if (sObjectTile != null)
+            destinationTile = SelectedCoordinates.Value;
+            direction = GetDirection(playerTile, destinationTile);
+            distance = GetDistance(playerTile, destinationTile).ToString();
+            translationKey = "feature-object_tracker-read_selected_coordinates";
+            translationTokens = new
             {
-                string direction = GetDirection(playerTile, sObjectTile.Value);
-                string distance = GetDistance(playerTile, sObjectTile).ToString();
-                if (SelectedCoordinates != null)
-                {
-                    object? translationTokens = new
-                    {
-                        coordinates_x = SelectedCoordinates.Value.X.ToString(),
-                        coordinates_y = SelectedCoordinates.Value.Y.ToString(),
-                        only_tile = readTileOnly ? 1 : 0,
-                        player_x = (int)playerTile.X,
-                        player_y = (int)playerTile.Y,
-                        direction,
-                        distance
-                    };
-                } else {
-                    object? translationTokens = new
-                    {
-                        object_name = SelectedObject ??
-                                      Translator.Instance.Translate("feature-object_tracker-no_selected_object"),
-                        only_tile = readTileOnly ? 1 : 0,
-                        object_x = (int)sObjectTile.Value.X,
-                        object_y = (int)sObjectTile.Value.Y,
-                        player_x = (int)playerTile.X,
-                        player_y = (int)playerTile.Y,
-                        direction,
-                        distance
-                    };
-                    MainClass.ScreenReader.TranslateAndSay(SelectedCoordinates != null ? "feature-object_tracker-read_selected_coordinates" : "feature-object_tracker-read_selected_object", true,
-                        translationTokens: translationTokens);
-                }
-            }
+                coordinates_x = SelectedCoordinates.Value.X.ToString(),
+                coordinates_y = SelectedCoordinates.Value.Y.ToString(),
+                only_tile,
+                player_x = (int)playerTile.X,
+                player_y = (int)playerTile.Y,
+                direction,
+                distance
+            };
         }
-    }
-
-    private void SetFocusToFirstObject(bool resetCategory = false)
-    {
-        var objects = trackedObjects?.GetObjects();
-        if (objects == null || !objects.Any())
+        else if (selectedObject.HasValue)
         {
-            MainClass.ScreenReader.TranslateAndSay("feature-object_tracker-no_objects_found", true);
-            return;
-        }
-
-        if (!objects.Keys.Any())
-        {
-            MainClass.ScreenReader.TranslateAndSay("feature-object_tracker-no_categories_found", true);
-            return;
-        }
-
-        // If SelectedCategory is unset or resetCategory is true, set SelectedCategory to the first available category
-        if (string.IsNullOrEmpty(SelectedCategory) || resetCategory || !objects.ContainsKey(SelectedCategory))
-        {
-            SelectedCategory = objects.Keys.First();
-            SelectedObject = null;
-        }
-
-        // Set SelectedObject to the first item in the current category
-        if (SelectedCategory != null && objects.TryGetValue(SelectedCategory, out var catObjects) && catObjects.Any())
-        {
-            SelectedObject = catObjects.Keys.First();
+            destinationTile = selectedObject.Value.position;
+            destinationName = selectedObject.Value.name;
+            direction = GetDirection(playerTile, destinationTile);
+            distance = GetDistance(playerTile, destinationTile).ToString();
+            translationKey = "feature-object_tracker-read_selected_object";
+            translationTokens = new
+            {
+                object_name = destinationName,
+                only_tile,
+                object_x = (int)destinationTile.X,
+                object_y = (int)destinationTile.Y,
+                player_x = (int)playerTile.X,
+                player_y = (int)playerTile.Y,
+                direction,
+                distance
+            };
         }
         else
         {
-            SelectedObject = null;
+            return;
         }
 
-        string outputCategory = SelectedCategory ?? "No Category";
-        string outputObject = SelectedObject ?? "No Object";
-        Log.Debug($"Category: {outputCategory} | Object: {outputObject}");
+
+
+        MainClass.ScreenReader.TranslateAndSay(
+            translationKey, 
+            translationTokens: translationTokens,
+            interrupt: true
+        );
     }
 
+    /// <summary>
+    /// Ensures focus is placed on the first category/object. 
+    /// If resetCategory is true, we reset the category to the first one; otherwise we keep the current category.
+    /// </summary>
+    /// <param name="resetCategory">
+    /// If true, forces resetting to the first category. Otherwise, we keep the current category if valid.
+    /// </param>
+    private void SetFocusToFirstObject(bool resetCategory = false)
+    {
+        // 1. Check if we have any tracked objects at all.
+        if (TrackedObjects == null)
+        {
+            MainClass.ScreenReader.TranslateAndSay("feature-object_tracker-no_objects_found", interrupt: true);
+            return;
+        }
+
+        if (TrackedObjects.Count == 0)
+        {
+            MainClass.ScreenReader.TranslateAndSay("feature-object_tracker-no_categories_found", interrupt: true);
+            return;
+        }
+
+        // 2. If we must reset the category (or if there's no valid category),
+        //    set the category index to 0. This call automatically sets 
+        //    SelectedCategory AND the first object in it (object index = 0).
+        if (SelectedCategory == null || resetCategory)
+        {
+            SelectedCategoryIndex = 0;
+        }
+        else
+        {
+            // 3. Otherwise, we keep the same category—so we just ensure
+            //    the object index is set to 0, in case it isn’t already.
+            //    (Because setting SelectedCategoryIndex above would do it
+            //    if we changed categories, but here the category stays the same.)
+            SelectedObjectIndex = 0;
+        }
+
+        // 4. Log or debug the final results.
+        #if DEBUG
+        string outputCategory = SelectedCategory ?? "No Category";
+        string outputObject = SelectedObject?.name ?? "No Object";
+        Log.Debug($"Category: {outputCategory} | Object: {outputObject}");
+        #endif
+    }
+
+    private int refreshCounter = 0;
+    private double _average = 0;
+    private void AddToAverage(double value)
+    {
+        refreshCounter++;
+        _average += (value - _average) / refreshCounter;
+    }
+
+    /// <summary>
+    /// Updates the tracked objects and refreshes the UI focus as needed.
+    /// </summary>
+    /// <param name="resetFocus">
+    /// Determines whether to reset the entire UI focus (category and object).
+    /// If false, focus will be preserved unless the selected category or object becomes invalid.
+    /// </param>
     internal void GetLocationObjects(bool resetFocus = true)
     {
-        TrackedObjects tObjects = new();
-        tObjects.FindObjectsInArea(SortByProximity);
-        trackedObjects = tObjects;
+        var stopwatch = Stopwatch.StartNew(); // Start timing
+        // Populate the TrackedObjects dictionary based on the current radar search.
+        try
+        {
+            TrackedObjects = Radar.SearchLocation(SortByProximity);
+        }
+        catch (Exception ex)
+        {
+            // make sure to clear out stale results
+            TrackedObjects = [];
+            // Log the error so we can diagnose why the radar call failed
+            Log.Error($"Radar search encountered an exception: {ex}", true);
+            return;
+        }
+        stopwatch.Stop(); // Stop timing
+        AddToAverage(stopwatch.ElapsedMilliseconds);
+        Log.Trace($"OTRefresh executed in {stopwatch.ElapsedMilliseconds} ms; average is {_average}.");
 
-        var objects = trackedObjects.GetObjects();
+        // Cache the current UI focus selections for category and object.
+        var selectedCategory = SelectedCategory;
+        var selectedObject = SelectedObject;
 
-        if (!resetFocus && SelectedCategory != null && !objects.ContainsKey(SelectedCategory))
+        // If the selected category is invalid, force a full UI focus reset.
+        if (!resetFocus && selectedCategory == null)
         {
             resetFocus = true;
         }
 
+        // Reset the UI focus entirely (category and object) if necessary.
         if (resetFocus)
         {
             SetFocusToFirstObject();
         }
-
-        if (trackedObjects == null || SelectedCategory == null || SelectedObject == null)
-        {
-            return;
-        }
-
-        if (!objects.TryGetValue(SelectedCategory, out var categoryObjects) || !categoryObjects.ContainsKey(SelectedObject))
+        // If the category is valid but the selected object is invalid, reset object focus only.
+        else if (selectedObject == null)
         {
             SetFocusToFirstObject(false);
         }
-    }
-
-    private void Cycle(bool cycleCategories, bool back = false, bool wrapAround = false)
-    {
-        if (!IsValidSelection())
-            return;
-
-        var objects = trackedObjects?.GetObjects();
-        string suffixText = string.Empty;
-        string endOfList = Translator.Instance.Translate("feature-object_tracker-end_of_list");
-        string startOfList = Translator.Instance.Translate("feature-object_tracker-start_of_list");
-        string noObject = Translator.Instance.Translate("feature-object_tracker-no_object");
-        string noCategory = Translator.Instance.Translate("feature-object_tracker-no_category");
-
-        void CycleHelper(ref string? selectedItem, string[] items)
-        {
-            if (selectedItem is not null)
-            {
-                int index = Array.IndexOf(items, selectedItem);
-                if (index == -1)
-                {
-                    SetFocusToFirstObject(cycleCategories);
-                    index = 0; // Reset index to 0 after setting focus to first object
-                }
-
-                var (selected, edgeOfList) = MiscUtils.Cycle(items, ref index, back, wrapAround);
-                selectedItem = selected;
-                suffixText = edgeOfList ? (wrapAround ? (back ? endOfList : startOfList) : (back ? startOfList : endOfList)) : string.Empty;
-            }
-        }
-
-        if (cycleCategories)
-        {
-            string[] categories = objects?.Keys.ToArray() ?? [];
-            CycleHelper(ref SelectedCategory, categories);
-            SetFocusToFirstObject(false);
-        }
-        else
-        {
-            string[] objectKeys = SelectedCategory != null && objects?.ContainsKey(SelectedCategory) == true
-                ? [.. objects[SelectedCategory].Keys]
-                : [];
-            CycleHelper(ref SelectedObject, objectKeys);
-        }
-
-        suffixText = suffixText.Length > 0 ? ", " + suffixText : string.Empty;
-        string spokenText = cycleCategories
-            ? $"{SelectedCategory ?? noCategory}, {SelectedObject ?? noObject}" + suffixText
-            : $"{SelectedObject ?? noObject}" + suffixText;
-
-        MainClass.ScreenReader.Say(spokenText, true);
     }
 
     internal void HandleKeys(object? sender, ButtonsChangedEventArgs e)
@@ -493,19 +767,23 @@ internal class ObjectTracker : FeatureBase
             if (e.Pressed.Any()) FavoriteKeysReset();
             if (cycleUpCategoryPressed)
             {
-                Cycle(cycleCategories: true, back: true, wrapAround: MainClass.Config?.OTWrapLists ?? false);
+                SelectedCategoryIndex--;
+                MainClass.ScreenReader.Say(_selectedCategory, true);
             }
             else if (cycleDownCategoryPressed)
             {
-                Cycle(cycleCategories: true, wrapAround: MainClass.Config?.OTWrapLists ?? false);
+                SelectedCategoryIndex++;
+                MainClass.ScreenReader.Say(_selectedCategory, true);
             }
             else if (cycleUpObjectPressed)
             {
-                Cycle(cycleCategories: false, back: true, wrapAround: MainClass.Config?.OTWrapLists ?? false);
+                SelectedObjectIndex--;
+                MainClass.ScreenReader.Say(_selectedObject.name, true);
             }
             else if (cycleDownObjectPressed)
             {
-                Cycle(cycleCategories: false, wrapAround: MainClass.Config?.OTWrapLists ?? false);
+                SelectedObjectIndex++;
+                MainClass.ScreenReader.Say(_selectedObject.name, true);
             }
 
             if (readSelectedObjectPressed || moveToSelectedObjectPressed || readSelectedObjectTileLocationPressed || switchSortingModePressed)
@@ -533,45 +811,67 @@ internal class ObjectTracker : FeatureBase
         }
     }
 
-    private void MoveToCurrentlySelectedObject()
+    /// <summary>
+    /// Attempts to move the player to a tile determined by either an override coordinate (SelectedCoordinates)
+    /// or the currently selected object's position (SelectedObject), if either is available.
+    /// </summary>
+    /// <remarks>
+    /// 1. If both <see cref="SelectedCoordinates"/> and <see cref="SelectedObject"/> are null, 
+    ///    the function announces that no path could be found and returns early.
+    /// 2. If <see cref="SelectedCoordinates"/> is set, it has priority over any object's position;
+    ///    afterward, it is reset to null.
+    /// 3. The method calls <see cref="ReadCurrentlySelectedObject"/> to provide audible feedback on 
+    ///    what is being targeted before pathfinding.
+    /// 4. If a valid tile is found, an announcement is made and the pathfinder is re-initialized
+    ///    (disposing any prior instance) to move the player from their current location to the target tile.
+    /// </remarks>
+    internal void MoveToCurrentlySelectedObject()
     {
-        Log.Debug("Attempt pathfinding.");
-        if (IsFocusValid())
-        {
-            ReadCurrentlySelectedObject();
-        }
+        // Determine the target tile from either an override or the selected object.
+        Vector2? targetTile = SelectedCoordinates ?? (SelectedObject?.position);
 
-        Farmer player = Game1.player;
-        SpecialObject? sObject = GetCurrentlySelectedObject();
-
-        Vector2 playerTile = player.Tile;
-        Vector2? sObjectTile = (sObject != null) ? sObject.TileLocation : (Vector2?)null;
-
-        Vector2? closestTile = SelectedCoordinates ?? (sObject is not null ? (sObject.PathfindingOverride != null ? GetClosestTilePath((Vector2)sObject.PathfindingOverride) : GetClosestTilePath(sObjectTile)) : null);
-        SelectedCoordinates = null;
-
-        if (closestTile != null)
-        {
-            MainClass.ScreenReader.TranslateAndSay("feature-object_tracker-moving_to", true,
-                translationTokens: new
-                {
-                    object_x = (int)closestTile.Value.X,
-                    object_y = (int)closestTile.Value.Y
-                });
-            pathfinder?.Dispose();
-            pathfinder = new(RetryPathfinding, StopPathfinding);
-            pathfinder.StartPathfinding(player, Game1.currentLocation, closestTile.Value.ToPoint());
-        }
-        else
+        // If neither override nor object gave us a tile, there’s nowhere to go.
+        if (targetTile == null)
         {
             MainClass.ScreenReader.TranslateAndSay("feature-object_tracker-could_not_find_path", true);
+            return;
         }
+
+        Log.Trace($"Attempting pathfinding to ({targetTile.Value.X}, {targetTile.Value.Y}).");
+
+        // (If there's nothing valid, this method won't speak.)
+        ReadCurrentlySelectedObject();
+
+        // Ensure the SelectedCoordinates are set for next time.
+        SelectedCoordinates = null;
+
+        // Announce that we’re moving to the chosen tile.
+        MainClass.ScreenReader.TranslateAndSay(
+            "feature-object_tracker-moving_to", 
+            interrupt: true,
+            translationTokens: new
+            {
+                object_x = (int)targetTile.Value.X,
+                object_y = (int)targetTile.Value.Y
+            }
+        );
+
+        // Set up the pathfinder; any existing one is disposed first.
+        targetTile = GetClosestTilePath(targetTile);
+        pathfinder?.Dispose();
+        pathfinder = new(RetryPathfinding, StopPathfinding);
+
+        // Start pathfinding from the player's current location to the destination tile.
+        Farmer player = Game1.player;
+        pathfinder.StartPathfinding(player, Game1.currentLocation, targetTile.Value.ToPoint());
     }
 
-    public void SaveToFavorites(int hotkey)
+    internal void SaveToFavorites(int hotkey)
     {
         string location = Game1.currentLocation.currentEvent is not null ? Game1.currentLocation.currentEvent.FestivalName : Game1.currentLocation.NameOrUniqueName;
         string currentSaveFileName = MainClass.GetCurrentSaveFileName();
+        var selectedObject = SelectedObject;
+        if (!selectedObject.HasValue) return;
         if (!favorites.ContainsKey(currentSaveFileName))
         {
             favorites[currentSaveFileName] = [];
@@ -585,12 +885,12 @@ internal class ObjectTracker : FeatureBase
         {
             favorites[MainClass.GetCurrentSaveFileName()][location][hotkey] = (Vector2ToString(CurrentPlayer.FacingTile), "coordinates");
         } else {
-            favorites[MainClass.GetCurrentSaveFileName()][location][hotkey] = (SelectedObject, SelectedCategory);
+            favorites[MainClass.GetCurrentSaveFileName()][location][hotkey] = (selectedObject.Value.name, SelectedCategory);
         }
         SaveFavorites();
     }
 
-    public (string?, string?) GetFromFavorites(int hotkey)
+    internal (string?, string?) GetFromFavorites(int hotkey)
     {
         string location = Game1.currentLocation.currentEvent is not null ? Game1.currentLocation.currentEvent.FestivalName : Game1.currentLocation.NameOrUniqueName;
         if (!favorites.TryGetValue(MainClass.GetCurrentSaveFileName(), out var _saveFileFavorites) || _saveFileFavorites != null)
@@ -609,18 +909,25 @@ internal class ObjectTracker : FeatureBase
         return (null, null);
     }
 
-    public void SetFromFavorites(int hotkey)
+    internal void SetFromFavorites(int hotkey)
     {
         var (obj, category) = GetFromFavorites(hotkey);
         if (category != null && obj != null)
         {
             SelectedCategory = category;
             SelectedCoordinates = StringToVector2(obj);
-            SelectedObject = obj;
+            if (TrackedObjects.TryGetValue(_selectedCategory, out var catObjects))
+            {
+                foreach (var item in catObjects)
+                { 
+                    if (item.name == obj)
+                        SelectedObject = item;
+                }
+            }
         }
     }
 
-    public void DeleteFavorite(int favoriteNumber)
+    internal void DeleteFavorite(int favoriteNumber)
     {
         string currentLocation = Game1.currentLocation.currentEvent is not null ? Game1.currentLocation.currentEvent.FestivalName : Game1.currentLocation.NameOrUniqueName;
 
