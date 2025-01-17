@@ -19,6 +19,11 @@ using static Utils.NPCUtils;
 
 internal class ObjectTracker : FeatureBase
 {
+    // For debugging / testing
+#if DEBUG
+    readonly Stopwatch stopwatch = new();
+    #endif
+
     // The current  Pathfinder instance
     private  Pathfinder? pathfinder;
 
@@ -268,7 +273,7 @@ internal class ObjectTracker : FeatureBase
             {
                 // The user tried to go beyond the first or last item in the current list.
                 // The old index/object remain in place; we just announce the boundary.
-                AnnounceBoundary(value < _selectedObjectIndex);
+                AnnounceBoundary(value < 0);
             }
             catch (KeyNotFoundException)
             {
@@ -316,10 +321,62 @@ internal class ObjectTracker : FeatureBase
     }
     bool SaveCoordinatesToggle = false;
 
-    private readonly int[] objectCounts = [0, 0, 0, 0, 0, 0, 0];
-    private readonly List<Action> updateActions;
-    private int currentActionIndex = 0;
-    private bool countHasChanged = false;
+        // Indicates whether debounce is active
+        private bool _debounced = false;
+    // Time of last refresh
+    private static double LastRefreshTime = 0;
+
+    // Private constant defining the refresh interval (e.g., 500ms)
+    private const double RefreshInterval = 1000; // in milliseconds
+
+    // Lock object for thread safety
+    private static readonly object LockObj = new();
+
+    /// <summary>
+    /// Sets the refresh flag to true, indicating that the data is stale and due for refresh.
+    /// </summary>
+    public static void InvalidateTrackerData()
+    {
+        lock (LockObj)
+        {
+            Instance.ShouldRefresh = true;
+            Instance._debounced = true;
+        }
+    }
+
+    // Indicates that the tracked data is stale and should be refreshed
+    private bool _shouldRefresh = false;
+
+    /// <summary>
+    /// Gets whether tracked item counts have changed or a character has moved and the refresh interval has elapsed.
+    /// </summary>
+    private bool ShouldRefresh
+    {
+        get
+        {
+            lock (LockObj)
+            {
+                if (_shouldRefresh && 
+                    (!_debounced || (Game1.currentGameTime.TotalGameTime.TotalMilliseconds  - LastRefreshTime) >= RefreshInterval))
+                {
+                    return true;
+                }
+                return false;
+            }
+        }
+        set
+        {
+            lock (LockObj)
+            {
+                _shouldRefresh = value;
+                if (!value)
+                {
+                    // Update the last refresh time when resetting the flag
+                    LastRefreshTime = Game1.currentGameTime.TotalGameTime.TotalMilliseconds;
+                }
+            }
+        }
+    }
 
     private static ObjectTracker? instance;
     public new static ObjectTracker Instance
@@ -338,16 +395,6 @@ internal class ObjectTracker : FeatureBase
         lastPressTimer.AutoReset = false; // So it only triggers once per start
         navigationTimer.Elapsed += OnNavigationTimerElapsed;
         navigationTimer.AutoReset = false;
-        updateActions =
-        [
-            () => UpdateAndRunIfChanged(ref objectCounts[0], Game1.currentLocation.debris.Count, () => { Log.Debug("Debris count has changed."); countHasChanged = true; }),
-            () => UpdateAndRunIfChanged(ref objectCounts[1], Game1.currentLocation.objects.Count(), () => { Log.Debug("Objects count has changed."); countHasChanged = true; }),
-            () => UpdateAndRunIfChanged(ref objectCounts[2], Game1.currentLocation.furniture.Count, () => { Log.Debug("Furniture count has changed."); countHasChanged = true; }),
-            () => UpdateAndRunIfChanged(ref objectCounts[3], Game1.currentLocation.resourceClumps.Count, () => { Log.Debug("ResourceClumps count has changed."); countHasChanged = true; }),
-            () => UpdateAndRunIfChanged(ref objectCounts[4], Game1.currentLocation.terrainFeatures.Count(), () => { Log.Debug("TerrainFeatures count has changed."); countHasChanged = true; }),
-            () => UpdateAndRunIfChanged(ref objectCounts[5], Game1.currentLocation.largeTerrainFeatures.Count, () => { Log.Debug("LargeTerrainFeatures count has changed."); countHasChanged = true; }),
-            () => UpdateSpecialAction()
-        ];
         LoadFavorites();
     }
 
@@ -380,7 +427,7 @@ internal class ObjectTracker : FeatureBase
             return;
         }
 
-        if (e.IsMultipleOf(5))
+        if (e.IsMultipleOf(15)) // ~250 ms
             Tick();
     }
 
@@ -447,11 +494,56 @@ internal class ObjectTracker : FeatureBase
     {
         // reset the objects being tracked
         GetLocationObjects(resetFocus: true);
+        // setting this directly instead of calling InvalidateTrackerData()
+        // causes an immediate refresh bypassing debounce.
+        ShouldRefresh = true;
         // reset favorites stack to the first stack for new location.
         FavoriteStack = 0;
     }
 
-    private void UpdateSpecialAction()
+    internal override void OnBuildingListChanged(object? sender, BuildingListChangedEventArgs e)
+    {
+        if (e.IsCurrentLocation)
+            InvalidateTrackerData();
+    }
+
+    internal override void OnDebrisListChanged(object? sender, DebrisListChangedEventArgs e)
+    {
+        if (e.IsCurrentLocation)
+            InvalidateTrackerData();
+    }
+
+    internal override void OnFurnitureListChanged(object? sender, FurnitureListChangedEventArgs e)
+    {
+        if (e.IsCurrentLocation)
+            InvalidateTrackerData();
+    }
+
+    internal override void OnLargeTerrainFeatureListChanged(object? sender, LargeTerrainFeatureListChangedEventArgs e)
+    {
+        if (e.IsCurrentLocation)
+            InvalidateTrackerData();
+    }
+
+    internal override void OnNpcListChanged(object? sender, NpcListChangedEventArgs e)
+    {
+        if (e.IsCurrentLocation)
+            InvalidateTrackerData();
+    }
+
+    internal override void OnObjectListChanged(object? sender, ObjectListChangedEventArgs e)
+    {
+        if (e.IsCurrentLocation)
+            InvalidateTrackerData();
+    }
+
+    internal override void OnTerrainFeatureListChanged(object? sender, TerrainFeatureListChangedEventArgs e)
+    {
+        if (e.IsCurrentLocation)
+            InvalidateTrackerData();
+    }
+
+    /*private void UpdateSpecialAction()
     {
         // Early exit if no location
         if (Game1.currentLocation == null) return;
@@ -461,7 +553,7 @@ internal class ObjectTracker : FeatureBase
             switch(Game1.currentLocation!.currentEvent!.id)
             {
                 case "festival_spring13":
-                    UpdateAndRunIfChanged(ref objectCounts[6], Game1.currentLocation.currentEvent.festivalProps.Count, () => { Log.Debug("Eggs count has changed."); countHasChanged = true; });
+                    UpdateAndRunIfChanged(ref objectCounts[6], Game1.currentLocation.currentEvent.festivalProps.Count, () => { Log.Debug("Eggs count has changed."); _shouldRefresh = true; });
                     return;
             }
         }
@@ -470,51 +562,24 @@ internal class ObjectTracker : FeatureBase
             switch (Game1.currentLocation)
             {
                 case  IslandHut islandHut:
-                    UpdateAndRunIfChanged(ref objectCounts[6], islandHut.treeHitLocal ? 1 : 0, () => { Log.Debug("Potted tree state has changed."); countHasChanged = true; });
+                    UpdateAndRunIfChanged(ref objectCounts[6], islandHut.treeHitLocal ? 1 : 0, () => { Log.Debug("Potted tree state has changed."); _shouldRefresh = true; });
                     return;
             }
         }
-    }
+    }*/
 
-    public void Tick()
+    private void Tick()
     {
         if (!MainClass.Config.OTAutoRefreshing || Game1.currentLocation == null) return;
 
-        if (updateActions.Count == 0)
+        // If a change was detected, refresh the objects
+        if (ShouldRefresh)
         {
-            Log.Error("No update actions to run.");
-            return;
+            GetLocationObjects(resetFocus: false);
         }
-
-        // Cycle through the actions without wrapping around
-        var (action, edgeOfList) = MiscUtils.Cycle(updateActions, ref currentActionIndex, wrapAround: false);
-
-        // If we've reached the end of the cycle
-        if (edgeOfList)
+        else
         {
-            // If a change was detected, refresh the objects
-            if (countHasChanged)
-            {
-                Log.Debug("Refreshing ObjectTracker; changes detected.");
-                GetLocationObjects(resetFocus: SortByProximity);
-                countHasChanged = false;  // Reset the flag for the next cycle
-            }
-
-            // Manually reset the index to 0 for the next iteration
-            currentActionIndex = 0;
-
-            // Return without running the action
-            return;
-        }
-
-        // Run the selected action
-        try
-        {
-            action();
-        }
-        catch (Exception ex)
-        {
-            Log.Error($"Error in RunUpdateAction: {ex.Message}");
+            _debounced = false;
         }
     }
 
@@ -671,6 +736,7 @@ internal class ObjectTracker : FeatureBase
         #endif
     }
 
+    #if DEBUG
     private int refreshCounter = 0;
     private double _average = 0;
     private void AddToAverage(double value)
@@ -678,6 +744,7 @@ internal class ObjectTracker : FeatureBase
         refreshCounter++;
         _average += (value - _average) / refreshCounter;
     }
+    #endif
 
     /// <summary>
     /// Updates the tracked objects and refreshes the UI focus as needed.
@@ -688,11 +755,13 @@ internal class ObjectTracker : FeatureBase
     /// </param>
     internal void GetLocationObjects(bool resetFocus = true)
     {
-        var stopwatch = Stopwatch.StartNew(); // Start timing
+        #if DEBUG
+        stopwatch.Restart();
+        #endif
         // Populate the TrackedObjects dictionary based on the current radar search.
         try
         {
-            TrackedObjects = Radar.SearchLocation(SortByProximity);
+            TrackedObjects = Radar.SearchLocation(!SortByProximity);
         }
         catch (Exception ex)
         {
@@ -702,9 +771,12 @@ internal class ObjectTracker : FeatureBase
             Log.Error($"Radar search encountered an exception: {ex}", true);
             return;
         }
+        #if DEBUG
         stopwatch.Stop(); // Stop timing
         AddToAverage(stopwatch.ElapsedMilliseconds);
         Log.Trace($"OTRefresh executed in {stopwatch.ElapsedMilliseconds} ms; average is {_average}.");
+        Game1.playSound("dwop");
+        #endif
 
         // Cache the current UI focus selections for category and object.
         var selectedCategory = SelectedCategory;
@@ -726,6 +798,8 @@ internal class ObjectTracker : FeatureBase
         {
             SetFocusToFirstObject(false);
         }
+
+        ShouldRefresh = false;
     }
 
     internal void HandleKeys(object? sender, ButtonsChangedEventArgs e)
@@ -768,22 +842,22 @@ internal class ObjectTracker : FeatureBase
             if (cycleUpCategoryPressed)
             {
                 SelectedCategoryIndex--;
-                MainClass.ScreenReader.Say(_selectedCategory, true);
+                MainClass.ScreenReader.TranslateAndSay(CATEGORY.FromString(SelectedCategory).ToString(), false);
             }
             else if (cycleDownCategoryPressed)
             {
                 SelectedCategoryIndex++;
-                MainClass.ScreenReader.Say(_selectedCategory, true);
+                MainClass.ScreenReader.TranslateAndSay(CATEGORY.FromString(SelectedCategory).ToString(), false);
             }
             else if (cycleUpObjectPressed)
             {
                 SelectedObjectIndex--;
-                MainClass.ScreenReader.Say(_selectedObject.name, true);
+                MainClass.ScreenReader.TranslateAndSay(SelectedObject.Value.name ?? "feature-object_tracker-no_objects_found", false);
             }
             else if (cycleDownObjectPressed)
             {
                 SelectedObjectIndex++;
-                MainClass.ScreenReader.Say(_selectedObject.name, true);
+                MainClass.ScreenReader.TranslateAndSay(SelectedObject.Value.name ?? "feature-object_tracker-no_objects_found", false);
             }
 
             if (readSelectedObjectPressed || moveToSelectedObjectPressed || readSelectedObjectTileLocationPressed || switchSortingModePressed)
@@ -862,8 +936,11 @@ internal class ObjectTracker : FeatureBase
         pathfinder = new(RetryPathfinding, StopPathfinding);
 
         // Start pathfinding from the player's current location to the destination tile.
-        Farmer player = Game1.player;
-        pathfinder.StartPathfinding(player, Game1.currentLocation, targetTile.Value.ToPoint());
+        if (targetTile != null)
+        {
+            Farmer player = Game1.player;
+            pathfinder.StartPathfinding(player, Game1.currentLocation, targetTile.Value.ToPoint());
+        }
     }
 
     internal void SaveToFavorites(int hotkey)
