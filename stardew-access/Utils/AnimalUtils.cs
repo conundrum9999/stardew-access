@@ -1,29 +1,30 @@
+using Microsoft.Xna.Framework;
 using StardewValley;
 
-namespace stardew_access.Utils
+namespace stardew_access.Utils;
+
+public class AnimalUtils
 {
-    public class AnimalUtils
+    private static readonly Dictionary<Vector2, FarmAnimal> AnimalByCoordinate = [];
+    public static Dictionary<Vector2, FarmAnimal>? GetAnimalsByLocation(GameLocation location)
     {
-        public static Dictionary<(int x, int y), FarmAnimal>? GetAnimalsByLocation(GameLocation location)
+        IEnumerable<FarmAnimal>? farmAnimals = location switch
         {
-            IEnumerable<FarmAnimal>? farmAnimals = location switch
-            {
-                Farm farm => farm.getAllFarmAnimals(),
-                AnimalHouse animalHouse => animalHouse.Animals.Values,
-                _ => null
-            };
+            Farm farm => farm.getAllFarmAnimals(),
+            AnimalHouse animalHouse => animalHouse.Animals.Values,
+            _ => null
+        };
 
-            if (farmAnimals is null) return null;
+        if (farmAnimals is null || !farmAnimals.Any()) return null;
 
-            Dictionary<(int x, int y), FarmAnimal> animalByCoordinate = [];
+        AnimalByCoordinate.Clear();
 
-            // Populate the dictionary
-            foreach (FarmAnimal animal in farmAnimals)
-            {
-                animalByCoordinate[((int x, int y))(animal.Tile.X, animal.Tile.Y)] = animal;
-            }
-
-            return animalByCoordinate;
+        // Populate the dictionary
+        foreach (FarmAnimal animal in farmAnimals)
+        {
+            AnimalByCoordinate[animal.Tile] = animal;
         }
+
+        return AnimalByCoordinate;
     }
 }

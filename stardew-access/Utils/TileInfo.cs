@@ -22,9 +22,9 @@ public class TileInfo
     private static readonly Dictionary<int, string> ResourceClumpNameTranslationKeys = [];
     private static readonly Dictionary<string, (string category, string itemName)> QualifiedItemIds = [];
     private static readonly Dictionary<string, Dictionary<(int, int), string>> BundleLocations = [];
-    private static HashSet<Vector2> _visitedCollisionTiles = new HashSet<Vector2>();
+    private static readonly HashSet<Vector2> _visitedCollisionTiles = [];
 
-    private static HashSet<string> _farmAnimalDroppedProduces =
+    private static readonly HashSet<string> _farmAnimalDroppedProduces =
         ["430", "174", "176", "180", "182", "289", "305", "442", "928", "107", "444", "446"];
 
     private static readonly Dictionary<Color, int> colorToSelectionMap = new()
@@ -331,7 +331,7 @@ public class TileInfo
             return (characterName, characterCategory);
         }
 
-        var farmAnimal = GetFarmAnimalAt(currentLocation, x, y);
+        var farmAnimal = GetFarmAnimalAt(currentLocation, tile);
         if (farmAnimal.name is not null)
         {
             return (farmAnimal.name, farmAnimal.category);
@@ -347,9 +347,9 @@ public class TileInfo
         staticTile ??= MainClass.TileManager.GetNameAndCategoryAt((x, y), "stardew-access", currentLocation);
         if (staticTile is { } static_tile)
         {
-#if DEBUG
+            #if DEBUG
             Log.Verbose($"TileInfo: Got static tile {static_tile} from TileManager");
-#endif
+            #endif
             return (static_tile.name, static_tile.category);
         }
 
@@ -571,11 +571,11 @@ public class TileInfo
     /// and the animal's category ("Pending" if the animal is pettable or has a produce i.e., harvestable otherwise "Animals");
     /// null if no farm animal is found or if the location is not a Farm or an AnimalHouse.
     /// </returns>
-    public static (string? name, CATEGORY? category) GetFarmAnimalAt(GameLocation location, int x, int y)
+    public static (string? name, CATEGORY? category) GetFarmAnimalAt(GameLocation location, Vector2 tile)
     {
-        Dictionary<(int x, int y), FarmAnimal>? animalsByCoordinate = AnimalUtils.GetAnimalsByLocation(location);
+        Dictionary<Vector2, FarmAnimal>? animalsByCoordinate = AnimalUtils.GetAnimalsByLocation(location);
 
-        if (animalsByCoordinate == null || !animalsByCoordinate.TryGetValue((x, y), out FarmAnimal? foundAnimal))
+        if (animalsByCoordinate == null || !animalsByCoordinate.TryGetValue(tile, out FarmAnimal? foundAnimal))
             return (null, null);
 
         string name = foundAnimal.displayName;
