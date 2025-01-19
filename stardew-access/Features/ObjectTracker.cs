@@ -279,8 +279,9 @@ internal class ObjectTracker : FeatureBase
             }
             catch (KeyNotFoundException ex)
             {
-                // The category key (_selectedCategory) is no longer valid in TrackedObjects => full refresh
-                Log.Error($"Unable to retrieve SelectedObjectIndex due to {ex}");
+                // The category key (_selectedCategory) is no longer valid in TrackedObjects
+                // Empty string is normal on first load; only log if it's something else.
+                if (!string.IsNullOrEmpty(_selectedCategory)) Log.Error($"Unable to retrieve SelectedObjectIndex due to {ex}");
                 // Return -1 to indicate no object.
                 return -1;
             }
@@ -697,8 +698,8 @@ internal class ObjectTracker : FeatureBase
             object translationTokens = new
             {
                 object_name = destinationName,
-                coordinates_x = destinationTile.X.ToString(),
-                coordinates_y = destinationTile.Y.ToString(),
+                x = destinationTile.X.ToString(),
+                y = destinationTile.Y.ToString(),
                 only_tile = (int)readMode,
                 player_x = (int)playerTile.X,
                 player_y = (int)playerTile.Y,
@@ -716,9 +717,9 @@ internal class ObjectTracker : FeatureBase
         {
             string toSpeak;
             if (string.IsNullOrEmpty(selectedCategory))
-                toSpeak = "feature-object_tracker-no_categories_found";
+                toSpeak = Translator.Instance.Translate("feature-object_tracker-no_categories_found");
             else if (!selectedObject.HasValue)
-                toSpeak = "feature-object_tracker-no_objects_found";
+                toSpeak = Translator.Instance.Translate("feature-object_tracker-no_objects_found");
             else
                 switch (readMode)
                 {
@@ -983,8 +984,8 @@ internal class ObjectTracker : FeatureBase
             interrupt: true,
             translationTokens: new
             {
-                object_x = (int)targetTile.Value.X,
-                object_y = (int)targetTile.Value.Y
+                x = (int)targetTile.Value.X,
+                y = (int)targetTile.Value.Y
             }
         );
 
