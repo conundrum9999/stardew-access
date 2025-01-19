@@ -196,8 +196,6 @@ internal class GridMovement : FeatureBase
         is_moving = true;
         timer.Start();
 
-        Log.Debug($"Move Direction: {direction}");
-
         Vector2 tileLocation = player.Tile;
 
         // Use the directionVectors dictionary to update the tileLocation
@@ -211,10 +209,6 @@ internal class GridMovement : FeatureBase
         {
             return;
         }
-
-#if DEBUG
-        Log.Verbose($"Move To: {tileLocation}");
-#endif
 
         Rectangle position = new((int)tileLocation.X * Game1.tileSize, (int)tileLocation.Y * Game1.tileSize, Game1.tileSize, Game1.tileSize);
         Warp warp = location.isCollidingWithWarpOrDoor(position, Game1.player);

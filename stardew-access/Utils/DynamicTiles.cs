@@ -819,7 +819,7 @@ public class DynamicTiles
         if (!loggedLocations.Contains(locationType))
         {
             // Log the message
-            Log.Debug($"Called GetNamedIslandLocationInfo with unimplemented IslandLocation of type {islandLocation.GetType()} and name {islandLocation.Name}");
+            Log.Debug($"Called GetNamedIslandLocationInfo with unimplemented IslandLocation of type {islandLocation.GetType()} and name {islandLocation.Name}", true);
 
             // Add the location to the HashSet to prevent logging it again
             loggedLocations.Add(locationType);
@@ -1150,7 +1150,7 @@ public class DynamicTiles
         if (!loggedLocations.Contains(locationType))
         {
             // Log the message
-            Log.Debug($"Called GetLocationByNameInfo with unimplemented GameLocation of type {currentLocation.GetType()} and name {currentLocation.Name}");
+            Log.Debug($"Called GetLocationByNameInfo with unimplemented GameLocation of type {currentLocation.GetType()} and name {currentLocation.Name}", true);
 
             // Add the location to the HashSet to prevent logging it again
             loggedLocations.Add(locationType);

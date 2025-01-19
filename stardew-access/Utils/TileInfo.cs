@@ -347,9 +347,6 @@ public class TileInfo
         staticTile ??= MainClass.TileManager.GetNameAndCategoryAt((x, y), "stardew-access", currentLocation);
         if (staticTile is { } static_tile)
         {
-            #if DEBUG
-            Log.Verbose($"TileInfo: Got static tile {static_tile} from TileManager");
-            #endif
             return (static_tile.name, static_tile.category);
         }
 
@@ -667,9 +664,6 @@ public class TileInfo
 
         // Get object names and categories based on qualified item id
         (string? name, CATEGORY category) correctNameAndCategory = GetCorrectNameAndCategoryFromQualifiedItemId(qualifiedItemId);
-        #if DEBUG
-            Log.Verbose($" GetObjectNameAndCategory initial {qualifiedItemId} {correctNameAndCategory} {toReturn}", true);
-        #endif
         if (String.IsNullOrEmpty(correctNameAndCategory.name))
         {
             correctNameAndCategory.name = obj.DisplayName;
@@ -874,9 +868,6 @@ public class TileInfo
         {
             object token;
             string qualified_item_id = NormalizeQualifiedItemID(qualifiedItemId);
-            #if DEBUG
-                Log.Verbose($"Fast lookup. ID: {qualified_item_id} {info}", true);
-            #endif
             if (DescriptiveFluentTokens.Contains(info.itemName))
                 token = new { qualified_item_id, described = MainClass.Config.DisableDescriptiveDebris ? 0 : 1 };
             else

@@ -146,7 +146,7 @@ internal class ObjectTracker : FeatureBase
             // Rebuild the key list to ensure it’s current
             var keys = GetNonEmptyCategoriesSorted();
             // If the stored string is valid, we find its index
-            if (SelectedCategory == null)
+            if (string.IsNullOrEmpty(_selectedCategory))
                 return -1;
             _selectedCategoryIndex = Array.IndexOf(keys, _selectedCategory);
             return _selectedCategoryIndex;
