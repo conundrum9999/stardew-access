@@ -6,6 +6,7 @@ feature-object_tracker-sort_by_proximity = Sort by Proximity: {$is_enabled ->
     [0] Disabled
     *[1] Enabled
   }
+feature-object_tracker-read_category_and_object  = {$category_name}: {$object_name}
 feature-object_tracker-read_selected_object = {$object_name} {$only_tile ->
     [0] is {$direction} {$distance}
     *[1] {EMPTYSTRING()}

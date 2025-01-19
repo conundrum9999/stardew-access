@@ -17,10 +17,18 @@ using static Utils.InputUtils;
 using static Utils.MovementHelpers;
 using static Utils.NPCUtils;
 
+public enum ReadMode
+{
+    NamePositionDirectionAndDistance = 0,
+    NameAndPosition = 1,
+    Name = 2,
+    Category = 3
+}
+
 internal class ObjectTracker : FeatureBase
 {
     // For debugging / testing
-#if DEBUG
+    #if DEBUG
     readonly Stopwatch stopwatch = new();
     #endif
 
@@ -612,82 +620,105 @@ internal class ObjectTracker : FeatureBase
     }
 
     /// <summary>
-    /// Reads information about the currently selected tile or object aloud to the player,
-    /// using either an explicit override coordinate (SelectedCoordinates) or the currently
-    /// selected object's position. 
+    /// Reads the currently selected object or coordinates based on the specified read mode.
     /// </summary>
-    /// <param name="readTileOnly">
-    /// When true, indicates that only the tile coordinates should be read aloud, rather than full details.
-    /// </param>
-    /// <remarks>
-    /// 1. If <see cref="SelectedCoordinates"/> is set, that takes priority over <see cref="SelectedObject"/>. 
-    /// 2. If neither is set, no speech output occurs. 
-    /// 3. The screen reader uses different translation tokens depending on whether an override is present.
-    /// </remarks>
-    private void ReadCurrentlySelectedObject(bool readTileOnly = false)
+    /// <param name="readMode">Determines the level of detail to speak.</param>
+    private void ReadCurrentlySelectedObject(ReadMode readMode = ReadMode.NamePositionDirectionAndDistance)
     {
-        // Attempt to retrieve the currently selected object (if any).
-        (Vector2 position, string name)? selectedObject = SelectedObject;
+        // Cache properties to prevent changes during execution
+        var selectedObject = SelectedObject;
+        var selectedCategory = SelectedCategory;
+        var selectedCoordinates = SelectedCoordinates;
 
-        // Determine the "destination" tile, either a user override or the selected object's position.
-        // If both are unset, do nothing.
-        Vector2 destinationTile;
-        string destinationName = "";
-        string translationKey;
-        object translationTokens;
-        int only_tile = readTileOnly ? 1 : 0;
-        Farmer player = Game1.player;
-        Vector2 playerTile = player.Tile;
-        string direction;
-        string distance;
-        if (SelectedCoordinates.HasValue)
+        switch (readMode)
         {
-            destinationTile = SelectedCoordinates.Value;
-            direction = GetDirection(playerTile, destinationTile);
-            distance = GetDistance(playerTile, destinationTile).ToString();
-            translationKey = "feature-object_tracker-read_selected_coordinates";
-            translationTokens = new
-            {
-                coordinates_x = SelectedCoordinates.Value.X.ToString(),
-                coordinates_y = SelectedCoordinates.Value.Y.ToString(),
-                only_tile,
-                player_x = (int)playerTile.X,
-                player_y = (int)playerTile.Y,
-                direction,
-                distance
-            };
+            case ReadMode.NamePositionDirectionAndDistance:
+            case ReadMode.NameAndPosition:
+                ReadNameAndPosition();
+                break;
+
+            case ReadMode.Name:
+            case ReadMode.Category:
+                ReadCategoryAndName();
+                break;
+
+            default:
+                Log.Error($"Unhandled ReadMode: {readMode}");
+                break;
         }
-        else if (selectedObject.HasValue)
+
+        void ReadNameAndPosition()
         {
-            destinationTile = selectedObject.Value.position;
-            destinationName = selectedObject.Value.name;
-            direction = GetDirection(playerTile, destinationTile);
-            distance = GetDistance(playerTile, destinationTile).ToString();
-            translationKey = "feature-object_tracker-read_selected_object";
-            translationTokens = new
+            string destinationName = "";
+            Vector2 destinationTile;
+            string translationKey;
+            if (selectedCoordinates.HasValue)
+            {
+                destinationTile = selectedCoordinates.Value;
+                translationKey = "feature-object_tracker-read_selected_coordinates";
+            }
+            else if (selectedObject.HasValue)
+            {
+                destinationName = selectedObject.Value.name;
+                destinationTile = selectedObject.Value.position;
+                translationKey = "feature-object_tracker-read_selected_object";
+            }
+            else
+                return;
+            Vector2 playerTile = Game1.player.Tile;
+            string direction = GetDirection(playerTile, destinationTile);
+            string distance = GetDistance(playerTile, destinationTile).ToString();
+            object translationTokens = new
             {
                 object_name = destinationName,
-                only_tile,
-                object_x = (int)destinationTile.X,
-                object_y = (int)destinationTile.Y,
+                coordinates_x = destinationTile.X.ToString(),
+                coordinates_y = destinationTile.Y.ToString(),
+                only_tile = (int)readMode,
                 player_x = (int)playerTile.X,
                 player_y = (int)playerTile.Y,
                 direction,
                 distance
             };
+            MainClass.ScreenReader.TranslateAndSay(
+                translationKey, 
+                translationTokens: translationTokens,
+                interrupt: true
+            );
         }
-        else
+
+        void ReadCategoryAndName()
         {
-            return;
+            string toSpeak;
+            if (string.IsNullOrEmpty(selectedCategory))
+                toSpeak = "feature-object_tracker-no_categories_found";
+            else if (!selectedObject.HasValue)
+                toSpeak = "feature-object_tracker-no_objects_found";
+            else
+                switch (readMode)
+                {
+                    case ReadMode.Name:
+                        toSpeak = selectedObject.Value.name;
+                        break;
+                    case ReadMode.Category:
+                        // This ensures we get the translated category name
+                        string category = CATEGORY.FromString(selectedCategory).ToString();
+                        // If config is enabled, speak both category and object name, properly punctuated for the language using fluent
+                        // otherwise just speak category (which is already translated)
+                        toSpeak = MainClass.Config.OTReadSelectedCategoryAndObject
+                            ? Translator.Instance.Translate("feature-object_tracker-read_category_and_object", new
+                            {
+                                category_name = category,
+                                object_name = selectedObject.Value.name
+                            })
+                            : category
+                        ;
+                        break;
+                    default:
+                        return;
+                }
+
+            MainClass.ScreenReader.Say(toSpeak, interrupt: false);
         }
-
-
-
-        MainClass.ScreenReader.TranslateAndSay(
-            translationKey, 
-            translationTokens: translationTokens,
-            interrupt: true
-        );
     }
 
     /// <summary>
@@ -842,22 +873,22 @@ internal class ObjectTracker : FeatureBase
             if (cycleUpCategoryPressed)
             {
                 SelectedCategoryIndex--;
-                MainClass.ScreenReader.TranslateAndSay(CATEGORY.FromString(SelectedCategory).ToString(), false);
+                ReadCurrentlySelectedObject(ReadMode.Category);
             }
             else if (cycleDownCategoryPressed)
             {
                 SelectedCategoryIndex++;
-                MainClass.ScreenReader.TranslateAndSay(CATEGORY.FromString(SelectedCategory).ToString(), false);
+                ReadCurrentlySelectedObject(ReadMode.Category);
             }
             else if (cycleUpObjectPressed)
             {
                 SelectedObjectIndex--;
-                MainClass.ScreenReader.TranslateAndSay(SelectedObject.Value.name ?? "feature-object_tracker-no_objects_found", false);
+                ReadCurrentlySelectedObject(ReadMode.Name);
             }
             else if (cycleDownObjectPressed)
             {
                 SelectedObjectIndex++;
-                MainClass.ScreenReader.TranslateAndSay(SelectedObject.Value.name ?? "feature-object_tracker-no_objects_found", false);
+                ReadCurrentlySelectedObject(ReadMode.Name);
             }
 
             if (readSelectedObjectPressed || moveToSelectedObjectPressed || readSelectedObjectTileLocationPressed || switchSortingModePressed)
@@ -879,7 +910,7 @@ internal class ObjectTracker : FeatureBase
                 }
                 if (readSelectedObjectTileLocationPressed)
                 {
-                    ReadCurrentlySelectedObject(readTileOnly: true);
+                    ReadCurrentlySelectedObject(ReadMode.NameAndPosition);
                 }
             }
         }

@@ -392,9 +392,9 @@ internal class ModConfig
     public Boolean OTWrapLists { get; set; } = false;
 
     /// <summary>
-    /// 
+    /// If enabled, reads newly selected object when switching categories.
     /// </summary>
-    public Boolean OTRememberPosition { get; set; } = true;
+    public Boolean OTReadSelectedCategoryAndObject { get; set; } = true;
 
     #endregion
 
