@@ -452,6 +452,7 @@ object_category-farmers = Farmers
 object_category-fishing = Fishing
 object_category-fishponds = Fish Ponds
 object_category-flooring = Flooring
+object_category-forageables = Forageables
 object_category-furniture = Furniture
 object_category-interactables = Interactables
 object_category-machines = Machines

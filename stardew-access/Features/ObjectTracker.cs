@@ -69,7 +69,7 @@ internal class ObjectTracker : FeatureBase
         System.Array.Copy(tempKeys, result, count);
 
         // Sort the array in-place
-        System.Array.Sort(result, StringComparer.Ordinal);
+        System.Array.Sort(result, StringComparer.CurrentCultureIgnoreCase );
 
         return result;
     }
