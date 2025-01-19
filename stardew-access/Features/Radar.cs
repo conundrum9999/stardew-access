@@ -11,10 +11,34 @@ using StardewModdingAPI;
 
 internal class Radar : FeatureBase
 {
+    #if DEBUG
+    private static readonly Stopwatch watch = new();
+    private static readonly Dictionary<string, (int counter, double average)> averages = [];
+
+    private static void AddToAverage(string key, double value)
+    {
+        if (!averages.ContainsKey(key))
+        {
+            // Initialize the tuple for the key
+            averages[key] = (0, 0);
+        }
+
+        // Extract the current counter and average
+        var (counter, average) = averages[key];
+
+        // Update the counter and calculate the new running average
+        counter++;
+        average += (value - average) / counter;
+
+        // Store the updated values back in the dictionary
+        averages[key] = (counter, average);
+    }
+    #endif
+
     private readonly List<Vector2> _closed;
     private readonly List<Furniture> _furniture;
     private readonly List<NPC> _npcs;
-    public List<string> Exclusions;
+    internal List<string> Exclusions;
     private List<string> _tempExclusions;
     public List<string> Focus;
     public bool IsRunning;
@@ -22,11 +46,11 @@ internal class Radar : FeatureBase
     public int Delay, Range;
 
     // Reusable collections to minimize allocations in search functions
-    private static readonly Queue<Vector2> ToSearch = new();
-    private static readonly HashSet<Vector2> Searched = [];
+    private static readonly Queue<(int x, int y)> ToSearch = new();
+    //private static readonly HashSet<Vector2> Searched = [];
     
     // Array of all eight direction Vectors
-    private static readonly Vector2[] Directions =
+    /*private static readonly Vector2[] Directions =
     [
         new(-1, 0), // Left
         new(0, 1),  // Up
@@ -36,6 +60,12 @@ internal class Radar : FeatureBase
         new(1, 1),  // Up-Right
         new(-1, -1),// Down-Left
         new(1, -1)  // Down-Right
+    ];*/
+    // Possible neighbor offsets (8-directional):
+    private static readonly (int dx, int dy)[] Directions =
+    [
+        (1, 0), (-1, 0), (0, 1), (0, -1),
+        (1, 1), (-1, 1), (1, -1), (-1, -1)
     ];
 
     public static bool RadarDebug = false;
@@ -206,16 +236,24 @@ internal class Radar : FeatureBase
         foreach (var catList in detectedTiles.Values)
             catList.Clear();
         ToSearch.Clear();
-        Searched.Clear();
 
-        // Start BFS from the player's current tile
-        Vector2 startingTile = Game1.player.Tile;
-        ToSearch.Enqueue(startingTile);
-        Searched.Add(startingTile);
+        int widthInTiles = currentLocation.Map.DisplayWidth / Game1.tileSize;
+        int heightInTiles = currentLocation.Map.DisplayHeight / Game1.tileSize;
+        // 2D array for visited flags:
+        bool[,] visited = new bool[widthInTiles + 2, heightInTiles + 2];
+
+        // Start BFS from the player's tile.
+        (int x, int y) start = ((int)Game1.player.Tile.X, (int)Game1.player.Tile.Y);
+        // Mark visited and enqueue:
+        ToSearch.Clear();
+        ToSearch.Enqueue(start);
+        // Add 1 to account for doors with -1 indexes
+        visited[start.x+1, start.y+1] = true;
 
         while (ToSearch.Count > 0)
         {
-            Vector2 currentTile = ToSearch.Dequeue();
+            var (cx, cy) = ToSearch.Dequeue();
+            Vector2 currentTile = new(cx, cy);
             var tileInfo = CheckTile(currentTile, currentLocation, true);
 
             if (tileInfo.Item1 && tileInfo.name != null)
@@ -229,20 +267,25 @@ internal class Radar : FeatureBase
                 category.Add((currentTile, tileInfo.name));
             }
 
-            // Explore neighboring tiles using the Directions array with a for loop
-            for (int i = 0; i < Directions.Length; i++)
+            // Now enqueue neighbors:
+            foreach (var (dx, dy) in Directions)
             {
-                Vector2 neighbor = currentTile + Directions[i];
-
-                // Check if the neighbor has already been searched
-                if (!Searched.Add(neighbor))
+                int nx = cx + dx;
+                int ny = cy + dy;
+                // Check in-bounds:
+                if (nx < 0 || nx > widthInTiles || ny < 0 || ny > heightInTiles)
                 {
-                    continue; // Skip if already searched
+                    if (!DoorUtils.IsWarpAtTile((nx, ny), currentLocation))
+                        continue;
                 }
 
-                if (currentLocation.isTileOnMap(neighbor) || DoorUtils.IsWarpAtTile(((int)neighbor.X, (int)neighbor.Y), currentLocation))
+                // Not visited yet?
+                // Add extra 1 to offset for -1 indexes
+                if (!visited[nx+1, ny+1])
                 {
-                    ToSearch.Enqueue(neighbor);
+                    visited[nx+1, ny+1] = true;
+
+                    ToSearch.Enqueue((nx, ny));
                 }
             }
         }
