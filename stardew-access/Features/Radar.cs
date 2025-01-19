@@ -21,6 +21,23 @@ internal class Radar : FeatureBase
     public bool RadarFocus = false;
     public int Delay, Range;
 
+    // Reusable collections to minimize allocations in search functions
+    private static readonly Queue<Vector2> ToSearch = new();
+    private static readonly HashSet<Vector2> Searched = [];
+    
+    // Array of all eight direction Vectors
+    private static readonly Vector2[] Directions =
+    [
+        new(-1, 0), // Left
+        new(0, 1),  // Up
+        new(1, 0),  // Right
+        new(0, -1), // Down
+        new(-1, 1), // Up-Left
+        new(1, 1),  // Up-Right
+        new(-1, -1),// Down-Left
+        new(1, -1)  // Down-Right
+    ];
+
     public static bool RadarDebug = false;
 
     private static Radar? instance;
@@ -176,89 +193,61 @@ internal class Radar : FeatureBase
         refreshCounter++;
         _average += (value - _average) / refreshCounter;
     }
- 
+
     /// <summary>
-    /// Search the entire location using Breadth First Search algorithm(BFS).
+    /// Searches the entire location using a Breadth-First Search (BFS) algorithm.
     /// </summary>
-    /// <returns>A dictionary with all the detected tiles along with the name of the object on it and it's category.</returns>
-    public static SortedDictionary<string, List<(Vector2 vector, string name)>> SearchLocation(bool sortAlphabetically = false)
+    /// <param name="detectedTiles">A pre-allocated list to store detected tile information.</param>
+    /// <returns>The same list populated with detected tile data.</returns>
+    public static Dictionary<string, List<(Vector2 position, string name)>> SearchLocation(
+        Dictionary<string, List<(Vector2 position, string name)>> detectedTiles)
     {
-        var watch = new Stopwatch();
-        //watch.Start();
         var currentLocation = Game1.currentLocation;
-        Dictionary<string, List<(Vector2, string)>> detectedTiles = [];
-        Vector2 position = Vector2.Zero;
-        (bool, string? name, string category) tileInfo;
+        foreach (var catList in detectedTiles.Values)
+            catList.Clear();
+        ToSearch.Clear();
+        Searched.Clear();
 
-        Queue<Vector2> toSearch = new();
-        HashSet<Vector2> searched = [];
-        int[] dirX = [-1, 0, 1, 0];
-        int[] dirY = [0, 1, 0, -1];
-        //int count = 0;
+        // Start BFS from the player's current tile
+        Vector2 startingTile = Game1.player.Tile;
+        ToSearch.Enqueue(startingTile);
+        Searched.Add(startingTile);
 
-        toSearch.Enqueue(Game1.player.Tile);
-        searched.Add(Game1.player.Tile);
-
-        //watch.Stop();
-        //var elapsedMs = watch.ElapsedMilliseconds;
-        //Log.Debug($"Search init duration: {elapsedMs}");
-        //watch.Reset();
-        //watch.Start();
-        Vector2 dir = new();
-        while (toSearch.Count > 0)
+        while (ToSearch.Count > 0)
         {
-            Vector2 item = toSearch.Dequeue();
-            //watch.Start();
-            tileInfo = CheckTile(item, currentLocation, true);
-            //watch.Stop(); // Stop timing
-            //AddToAverage(watch.ElapsedMilliseconds);
-            //Log.Trace($"CheckTile executed in {watch.ElapsedMilliseconds} ms; average is {_average}.", true);
+            Vector2 currentTile = ToSearch.Dequeue();
+            var tileInfo = CheckTile(currentTile, currentLocation, true);
+
             if (tileInfo.Item1 && tileInfo.name != null)
             {
-                // Add to the detectedTiles dictionary, grouped by category
-                if (!detectedTiles.TryGetValue(tileInfo.category, out var list))
+                // Add the detected tile information as a tuple to the list
+                if (!detectedTiles.TryGetValue(tileInfo.category, out List<(Vector2 position, string name)>? category))
                 {
-                    list = [];
-                    detectedTiles[tileInfo.category] = list;
+                    category = [];
+                    detectedTiles[tileInfo.category] = category;
                 }
-                list.Add((item, tileInfo.name)); // Add in proximity order (discovered order)
+                category.Add((currentTile, tileInfo.name));
             }
 
-            //count++;
-
-            // Reset dir
-            dir.X = 0;
-            dir.Y = 0;
-            for (int i = 0; i < 4; i++)
+            // Explore neighboring tiles using the Directions array with a for loop
+            for (int i = 0; i < Directions.Length; i++)
             {
-                dir.X = item.X + dirX[i];
-                dir.Y = item.Y + dirY[i];
+                Vector2 neighbor = currentTile + Directions[i];
 
-                if (!searched.Add(dir)) 
+                // Check if the neighbor has already been searched
+                if (!Searched.Add(neighbor))
                 {
-                    continue; // Skip if already in the HashSet
+                    continue; // Skip if already searched
                 }
-                if (DoorUtils.IsWarpAtTile(((int)dir.X, (int)dir.Y), currentLocation) ||
-                                                currentLocation.isTileOnMap(dir))
+
+                if (currentLocation.isTileOnMap(neighbor) || DoorUtils.IsWarpAtTile(((int)neighbor.X, (int)neighbor.Y), currentLocation))
                 {
-                    toSearch.Enqueue(dir);
+                    ToSearch.Enqueue(neighbor);
                 }
             }
         }
 
-        //watch.Stop();
-        //elapsedMs = watch.ElapsedMilliseconds;
-        //Log.Debug($"Search loop duration: {elapsedMs}; {count} iterations.");
-        // If sortAlphabetically is true, sort each category alphabetically
-        if (sortAlphabetically)
-        {
-            foreach (var list in detectedTiles.Values)
-            {
-                list.Sort((a, b) => StringComparer.Ordinal.Compare(a.Item2, b.Item2));
-            }
-        }
-
-        return new SortedDictionary<string, List<(Vector2, string)>>(detectedTiles);
+        return detectedTiles;
     }
 
     /// <summary>

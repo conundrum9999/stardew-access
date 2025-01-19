@@ -35,7 +35,9 @@ internal class PatchManager
             new TailoringMenuPatch(),
             // Misc Patches
             new ChatBoxPatch(),
+            new CharacterPatch(),
             new DialogueBoxPatch(),
+            new EventPatch(),
             new Game1Patch(),
             new GameLocationPatch(),
             new IClickableMenuPatch(),

@@ -40,13 +40,39 @@ internal class ObjectTracker : FeatureBase
 
     // Store of tracked things
     // will be replaced upon refresh.
-    private  SortedDictionary<string, List<(Vector2 position, string name)>> TrackedObjects = [];
+    private  readonly Dictionary<string, List<(Vector2 position, string name)>> TrackedObjects = [];
 
     // Backing field for the currently selected category in the UI.
     private string _selectedCategory = "";
 
     // Backing field for the currently selected category's index in the list.
     private int _selectedCategoryIndex = -1;
+
+    // Creates sorted array of categories, ignoring those with no objcts
+    private string[] GetNonEmptyCategoriesSorted()
+    {
+        // Allocate maximum potential size (all keys)
+        string[] tempKeys = new string[TrackedObjects.Count];
+        int count = 0;
+
+        // Use a for loop over the dictionary's enumerator
+        foreach (var kvp in TrackedObjects)
+        {
+            if (kvp.Value.Count > 0) // Check for non-empty list
+            {
+                tempKeys[count++] = kvp.Key; // Add to array and increment count
+            }
+        }
+
+        // Resize the array to fit the actual number of keys
+        var result = new string[count];
+        System.Array.Copy(tempKeys, result, count);
+
+        // Sort the array in-place
+        System.Array.Sort(result, StringComparer.Ordinal);
+
+        return result;
+    }
 
     // Represents the currently selected category in the UI.
     internal string? SelectedCategory
@@ -77,7 +103,7 @@ internal class ObjectTracker : FeatureBase
             {
                 // 3. If the new category isn't in TrackedObjects, it’s invalid
                 //    => Throw an error -- this shouldn't happen under normal circumstances.
-                if (!TrackedObjects.ContainsKey(value))
+                if (!TrackedObjects.ContainsKey(value) || TrackedObjects[value].Count == 0)
                 {
                     // Because we haven't assigned anything yet,
                     // our underlying values remain unchanged.
@@ -92,10 +118,10 @@ internal class ObjectTracker : FeatureBase
                 // Build a temporary array of category keys from the sorted dictionary
                 // to figure out the new index of this category.
                 // (We assume you're using SortedDictionary, so keys are in alphabetical order).
-                var keys = TrackedObjects.Keys.ToArray();
+                var keys = GetNonEmptyCategoriesSorted();
                 _selectedCategoryIndex = Array.IndexOf(keys, value);
 
-                // Since GetLocationObjects only populates categories that
+                // Since we only selected non-empty categories, we
                 // always have at least one object, we select index 0 without
                 // checking for an empty list.
                 var catList = TrackedObjects[_selectedCategory];
@@ -118,7 +144,7 @@ internal class ObjectTracker : FeatureBase
         get
         {
             // Rebuild the key list to ensure it’s current
-            var keys = TrackedObjects.Keys.ToArray();
+            var keys = GetNonEmptyCategoriesSorted();
             // If the stored string is valid, we find its index
             if (SelectedCategory == null)
                 return -1;
@@ -127,7 +153,7 @@ internal class ObjectTracker : FeatureBase
         }
         set
         {
-            var keys = TrackedObjects.Keys.ToArray();
+            var keys = GetNonEmptyCategoriesSorted();
             if (value < 0 || value >= keys.Length)
             {
                 // Announce boundary or do nothing
@@ -792,12 +818,13 @@ internal class ObjectTracker : FeatureBase
         // Populate the TrackedObjects dictionary based on the current radar search.
         try
         {
-            TrackedObjects = Radar.SearchLocation(!SortByProximity);
+            Radar.SearchLocation(TrackedObjects);
         }
         catch (Exception ex)
         {
             // make sure to clear out stale results
-            TrackedObjects = [];
+            foreach (var catList in TrackedObjects.Values)
+                catList.Clear();
             // Log the error so we can diagnose why the radar call failed
             Log.Error($"Radar search encountered an exception: {ex}", true);
             return;

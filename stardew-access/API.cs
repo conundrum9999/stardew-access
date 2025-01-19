@@ -105,8 +105,8 @@ public class API : IStardewAccessApi
     public Dictionary<Vector2, (string name, string category)> SearchNearbyTiles(Vector2 center, int limit)
         => new Radar().SearchNearbyTiles(center, limit, false);
 
-    public SortedDictionary<string, List<(Vector2 position, string name)>> SearchLocation()
-        => Radar.SearchLocation();
+    public Dictionary<string, List<(Vector2 position, string name)>> SearchLocation(Dictionary<string, List<(Vector2 position, string name)>> detectedTiles)
+        => Radar.SearchLocation(detectedTiles);
 
     public (string? name, string? category) GetNameWithCategoryNameAtTile(Vector2 tile)
         => TileInfo.GetNameWithCategoryNameAtTile(tile, null);

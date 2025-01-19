@@ -117,7 +117,7 @@ public interface IStardewAccessApi
     /// Search the entire location using Breadth First Search algorithm(BFS).
     /// </summary>
     /// <returns>A dictionary with all the detected tiles along with the name of the object on it and it's category.</returns>
-    public SortedDictionary<string, List<(Vector2 position, string name)>> SearchLocation();
+    public Dictionary<string, List<(Vector2 position, string name)>> SearchLocation(Dictionary<string, List<(Vector2 position, string name)>> detectedTiles);
 
     /// <summary>
     /// Check the tile for any object
